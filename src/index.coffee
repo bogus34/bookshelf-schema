@@ -31,17 +31,19 @@ plugin = (options = {}) -> (db) ->
 
     Model = db.Model
     Model.schema = applySchema
+    Model.__bookshelf_schema_options = options
 
     replaceExtend Model
 
 applySchema = (schema) ->
     @__schema = buildSchema schema
-    contributeToModel this, schema
+    contributeToModel this, @__schema
 
     oldInitialize = @::initialize
     @::initialize = ->
-        oldInitialize?()
-        initSchema()
+        if oldInitialize?
+            oldInitialize.apply this, arguments
+        initSchema.apply this
 
 replaceExtend = (Model) ->
     originalExtend = Model.extend

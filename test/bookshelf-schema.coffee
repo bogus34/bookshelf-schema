@@ -1,8 +1,8 @@
-Knex = require 'knex'
 Bookshelf = require 'bookshelf'
-init = require './init'
 Schema = require '../src/'
+init = require './init'
 Fields = require '../src/fields'
+{StringField, IntField, EmailField} = Fields
 
 describe "Bookshelf schema", ->
     this.timeout 3000
@@ -16,9 +16,9 @@ describe "Bookshelf schema", ->
             tableName: 'users'
         }, {
             schema: [
-                Fields.StringField 'username'
-                Fields.IntField 'age'
-                Fields.EmailField 'email'
+                StringField 'username'
+                IntField 'age'
+                EmailField 'email'
             ]
         }
 
@@ -30,12 +30,46 @@ describe "Bookshelf schema", ->
         class User extends db.Model
             tableName: 'users'
             @schema [
-                Fields.StringField 'username'
-                Fields.IntField 'age'
-                Fields.EmailField 'email'
+                StringField 'username'
+                IntField 'age'
+                EmailField 'email'
             ]
 
         User.prototype.hasOwnProperty('username').should.be.true
         User.prototype.hasOwnProperty('age').should.be.true
         User.prototype.hasOwnProperty('email').should.be.true
 
+    it "doesn't add property if field has option createProperty: false", ->
+        class User extends db.Model
+            tableName: 'users'
+            @schema [
+                StringField 'username', createProperty: false
+            ]
+
+        User.prototype.hasOwnProperty('username').should.be.false
+
+    it "doesn't add properties if initialized with option createProperties: false", ->
+        db2 = Bookshelf db.knex
+        db2.plugin Schema(createProperties: false)
+
+        class User extends db2.Model
+            tableName: 'users'
+            @schema [
+                StringField 'username'
+            ]
+
+        User.prototype.hasOwnProperty('username').should.be.false
+
+    it "doesn't overwrite existing methods and properties", ->
+        class User extends db.Model
+            tableName: 'users'
+            @schema [ StringField 'query' ]
+
+        new User().query.should.be.a 'function'
+
+    it 'field named "id" doesnt overwrite internal id property', ->
+        class User extends db.Model
+            tableName: 'users'
+            @schema [ StringField 'id' ]
+
+        new User(id: 1).id.should.equal 1
