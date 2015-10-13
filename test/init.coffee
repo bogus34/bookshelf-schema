@@ -32,7 +32,7 @@ init = ->
     db.plugin Schema()
     db
 
-users = co.wrap ->
+users = co ->
     init() unless db
     knex = db.knex
     yield knex.schema.dropTableIfExists('users')
@@ -40,6 +40,11 @@ users = co.wrap ->
         table.increments('id').primary()
         table.string 'username', 255
         table.string 'email', 255
+        table.float 'code'
+        table.boolean 'flag'
+        table.dateTime 'last_login'
+        table.date 'birth_date'
+        table.json 'additional_data'
 
 module.exports =
     init: init

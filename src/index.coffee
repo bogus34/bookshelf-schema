@@ -36,6 +36,8 @@ plugin = (options = {}) -> (db) ->
     Model::validate = validate
 
     replaceExtend Model
+    replaceFormat Model
+    replaceParse Model
 
 applySchema = (schema) ->
     @__schema = buildSchema schema
@@ -57,6 +59,24 @@ replaceExtend = (Model) ->
         return cls unless schema
         applySchema.call cls, schema
         cls
+
+replaceFormat = (Model) ->
+    originalFormat = Model::format
+    Model::format = (attrs, options) ->
+        attrs = originalFormat.call this, attrs, options
+        if @constructor.__bookshelf_schema
+            for f in @constructor.__bookshelf_schema.formatters
+                f attrs, options
+        attrs
+
+replaceParse = (Model) ->
+    originalParse = Model::parse
+    Model::parse = (resp, options) ->
+        attrs = originalParse.call this, resp, options
+        if @constructor.__bookshelf_schema
+            for f in @constructor.__bookshelf_schema.parsers
+                f attrs, options
+        attrs
 
 buildSchema = (entities) ->
     schema = []

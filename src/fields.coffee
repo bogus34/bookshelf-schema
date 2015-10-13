@@ -18,8 +18,14 @@ class Field
             @_createProperty(cls)
         if @pluginOption('validation')
             @_appendValidations(cls)
+        @_appendFormatter()
+        @_appendParser()
 
-    validations: -> []
+    validations: ->
+        if @options.validations
+            @options.validations[..]
+        else
+            []
     modelValidations: ->
 
     createGetter: ->
@@ -89,6 +95,14 @@ class Field
         rule.label ?= @options.label if @options.label?
         rule
 
+    _appendFormatter: ->
+        if typeof @format is 'function'
+            @model.__bookshelf_schema.formatters.push @format.bind(this)
+
+    _appendParser: ->
+        if typeof @parse is 'function'
+            @model.__bookshelf_schema.parsers.push @parse.bind(this)
+
 class StringField extends Field
     constructor: (name, options) ->
         return new StringField(name, options) unless this instanceof StringField
@@ -135,6 +149,9 @@ class IntField extends NumberField
         result.unshift @_withMessage 'integer'
         result
 
+    parse: (attrs) ->
+        attrs[@name] = parseInt attrs[@name] if @name of attrs
+
 class FloatField extends NumberField
     constructor: (name, options) ->
         return new FloatField(name, options) unless this instanceof FloatField
@@ -145,10 +162,19 @@ class FloatField extends NumberField
         result.unshift @_withMessage 'numeric'
         result
 
+    parse: (attrs) ->
+        attrs[@name] = parseFloat attrs[@name] if @name of attrs
+
 class BooleanField extends Field
     constructor: (name, options) ->
         return new BooleanField(name, options) unless this instanceof BooleanField
         super name, options
+
+    parse: (attrs) ->
+        attrs[@name] = !!attrs[@name] if @name of attrs
+
+    format: (attrs) ->
+        attrs[@name] = !!attrs[@name] if @name of attrs
 
 class DateTimeField extends Field
     constructor: (name, options) ->
@@ -160,6 +186,12 @@ class DateTimeField extends Field
         result.push @_withMessage @_validateDatetime
         result
 
+    parse: (attrs) ->
+        attrs[@name] = new Date(attrs[@name]) if @name of attrs
+
+    format: (attrs) ->
+        attrs[@name] = new Date(attrs[@name]) if @name of attrs and attrs[@name] not instanceof Date
+
     _validateDatetime: (value) ->
         return true if value instanceof Date
         return true if typeof value is 'string' and not isNaN(Date.parse(value))
@@ -167,8 +199,18 @@ class DateTimeField extends Field
 
 class DateField extends DateTimeField
     constructor: (name, options) ->
-        return new DateTime(name, options) unless this instanceof DateField
+        return new DateField(name, options) unless this instanceof DateField
         super name, options
+
+    parse: (attrs) ->
+        if @name of attrs
+            d = new Date(attrs[@name])
+            attrs[@name] = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+
+    format: (attrs) ->
+        if @name of attrs
+            d = unless attrs[@name] instanceof Date then new Date(attrs[@name]) else attrs[@name]
+            attrs[@name] = new Date(d.getFullYear(), d.getMonth(), d.getDate())
 
 class JSONField extends Field
     constructor: (name, options) ->
@@ -179,6 +221,14 @@ class JSONField extends Field
         result = super
         result.push @_withMessage @_validateJSON
         result
+
+    format: (attrs) ->
+        return unless attrs[@name] and typeof attrs[@name] is 'object'
+        attrs[@name] = JSON.stringify attrs[@name]
+
+    parse: (attrs) ->
+        return unless attrs[@name] and typeof attrs[@name] is 'string'
+        attrs[@name] = JSON.parse attrs[@name]
 
     _validateJSON: (value) ->
         return true if typeof value is 'object'

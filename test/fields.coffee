@@ -1,0 +1,163 @@
+Bookshelf = require 'bookshelf'
+CheckIt = require 'checkit'
+Schema = require '../src/'
+init = require './init'
+F = require '../src/fields'
+
+describe "Fields", ->
+    this.timeout 3000
+    db = null
+
+    define = (fields) ->
+        class User extends db.Model
+            tableName: 'users'
+            @schema fields
+
+    before ->
+        db = init.init()
+        init.users()
+
+    afterEach -> db.knex('users').truncate()
+
+    describe 'StringField', ->
+        it 'validates min_length and max_length', co ->
+            User = define [F.StringField 'username', min_length: 5, max_length: 10]
+            User.__bookshelf_schema.validations.username.should.deep.equal ['minLength:5', 'maxLength:10']
+
+            yield [
+                new User(username: 'foo').validate().should.be.rejected
+                new User(username: 'Some nickname that is longer then 10 characters').validate().should.be.rejected
+                new User(username: 'justfine').validate().should.be.fulfilled
+            ]
+
+        it 'uses additional names for length restrictions', ->
+            User = define [F.StringField 'username', minLength: 5, maxLength: 10]
+            User.__bookshelf_schema.validations.username.should.deep.equal ['minLength:5', 'maxLength:10']
+
+    describe 'EmailField', ->
+        it 'validates email', co ->
+            User = define [F.EmailField 'email']
+            User.__bookshelf_schema.validations.email.should.deep.equal ['email']
+
+            yield [
+                new User(email: 'foo').validate().should.be.rejected
+                new User(email: 'foo@bar.com').validate().should.be.fulfilled
+            ]
+
+    describe 'IntField', ->
+        it 'validates integers', co ->
+            User = define [F.IntField 'code']
+            User.__bookshelf_schema.validations.code.should.deep.equal ['integer']
+
+            yield [
+                new User(code: 'foo').validate().should.be.rejected
+                new User(code: '10foo').validate().should.be.rejected
+                new User(code: 10.5).validate().should.be.rejected
+                new User(code: 10).validate().should.be.fulfilled
+                new User(code: '10').validate().should.be.fulfilled
+                new User(code: '-10').validate().should.be.fulfilled
+            ]
+
+        it 'validates natural', co ->
+            User = define [F.IntField 'code', natural: true]
+            User.__bookshelf_schema.validations.code.should.deep.equal ['integer', 'natural']
+
+            yield [
+                new User(code: 10).validate().should.be.fulfilled
+                new User(code: -10).validate().should.be.rejected
+                new User(code: '-10').validate().should.be.rejected
+            ]
+
+        it 'validates bounds', co ->
+            User = define [F.IntField 'code', greater_than: 1, less_than: 10]
+            User.__bookshelf_schema.validations.code.should.deep.equal ['integer', 'greaterThan:1', 'lessThan:10']
+
+            yield [
+                new User(code: 5).validate().should.be.fulfilled
+                new User(code: 1).validate().should.be.rejected
+                new User(code: 10).validate().should.be.rejected
+            ]
+
+    describe 'FloatField', ->
+        it 'validates floats', co ->
+            User = define [F.FloatField 'code']
+            User.__bookshelf_schema.validations.code.should.deep.equal ['numeric']
+
+            yield [
+                new User(code: 'foo').validate().should.be.rejected
+                new User(code: '10foo').validate().should.be.rejected
+                new User(code: 10.5).validate().should.be.fulfilled
+                new User(code: 10).validate().should.be.fulfilled
+                new User(code: '10.5').validate().should.be.fulfilled
+                new User(code: '-10.5').validate().should.be.fulfilled
+            ]
+
+    describe 'BooleanField', ->
+        it 'stores boolean values', co ->
+            User = define [F.BooleanField 'flag']
+            user = yield new User(flag: 'some string').save()
+            user = yield new User(id: user.id).fetch()
+            user.flag.should.be.true
+
+    describe 'DateTimeField', ->
+        it 'stores Date objects', co ->
+            User = define [F.DateTimeField 'last_login']
+            date = new Date('2013-09-25T15:00:00.000Z')
+            user = yield new User(last_login: date).save()
+            user = yield new User(id: user.id).fetch()
+            user.last_login.should.be.an.instanceof Date
+            user.last_login.toISOString().should.equal date.toISOString()
+
+        it 'validates date', co ->
+            User = define [F.DateTimeField 'last_login']
+
+            yield [
+                new User(last_login: new Date()).validate().should.be.fulfilled
+                new User(last_login: new Date().toUTCString()).validate().should.be.fulfilled
+                new User(last_login: '1/1/1').validate().should.be.fulfilled
+                new User(last_login: 'foobar').validate().should.be.rejected
+            ]
+
+    describe 'DateField', ->
+        truncate_date = (d) -> new Date(d.getFullYear(), d.getMonth(), d.getDate())
+
+        it 'stores Date objects', co ->
+            User = define [F.DateField 'birth_date']
+            date = new Date('2013-09-25T15:00:00.000Z')
+            user = yield new User(birth_date: date).save()
+            user = yield new User(id: user.id).fetch()
+            user.birth_date.should.be.an.instanceof Date
+            user.birth_date.toISOString().should.equal truncate_date(date).toISOString()
+
+        it 'validates date', co ->
+            User = define [F.DateTimeField 'birth_date']
+
+            yield [
+                new User(birth_date: new Date()).validate().should.be.fulfilled
+                new User(birth_date: new Date().toUTCString()).validate().should.be.fulfilled
+                new User(birth_date: '1/1/1').validate().should.be.fulfilled
+                new User(birth_date: 'foobar').validate().should.be.rejected
+            ]
+
+    describe 'JSONField', ->
+        it 'stores JSON objects', co ->
+            User = define [F.JSONField 'additional_data']
+
+            data  =
+                nickname: 'bogus'
+                interests: ['nodejs', 'photography', 'tourism']
+
+            user = yield new User(additional_data: data).save()
+            user = yield new User(id: user.id).fetch()
+            user.additional_data.should.deep.equal data
+
+        it 'validates JSON', co ->
+            User = define [F.JSONField 'additional_data']
+
+            yield [
+                new User(additional_data: {foo: 'bar'}).validate().should.be.fulfilled
+                new User(additional_data: JSON.stringify(foo: 'bar')).validate().should.be.fulfilled
+                new User(additional_data: 42).validate().should.be.rejected
+                new User(additional_data: 'not a json').validate().should.be.rejected
+            ]
+

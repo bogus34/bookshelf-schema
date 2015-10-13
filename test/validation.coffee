@@ -25,26 +25,24 @@ describe "Validation", ->
             username: ['minLength:3', 'maxLength:15']
             email: ['email']
 
-    it 'should can validate models', co.wrap ->
+    it 'should validate models', co ->
         yield [
             new User(username: 'bogus').validate().should.be.fulfilled
             new User(username: 'bogus', email: 'foobar').validate().should.be.rejected
         ]
 
-    it 'should run validations on save', co.wrap ->
+    it 'should run validations on save', co ->
         validationCalled = false
         f = ->
             validationCalled = true
             false
         User.__bookshelf_schema.validations.username.push f
 
-        try
-            yield new User(username: 'bogus').save()
-        catch e
-            e.should.be.an.instanceof CheckIt.Error
-            validationCalled.should.be.true
+        e = yield new User(username: 'bogus').save().should.be.rejected
+        e.should.be.an.instanceof CheckIt.Error
+        validationCalled.should.be.true
 
-    it "shouldn't apply validation if plugin initialized with option validation: false", co.wrap ->
+    it "shouldn't apply validation if plugin initialized with option validation: false", co ->
         db2 = Bookshelf db.knex
         db2.plugin Schema(validation: false)
 
@@ -61,3 +59,12 @@ describe "Validation", ->
             user.save().should.be.fulfilled
         ]
 
+    it 'accepts custom validation rules like Checkit do', co ->
+        class User extends db.Model
+            tableName: 'users'
+            @schema [
+                StringField 'username', validations: [{rule: 'minLength:5', message: '{{label}}: foo', label: 'foo'}]
+            ]
+
+        e = yield new User(username: 'bar').validate().should.be.rejected
+        e.get('username').message.should.equal 'foo: foo'
