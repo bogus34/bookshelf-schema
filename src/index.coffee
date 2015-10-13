@@ -28,10 +28,12 @@ CheckIt = require 'checkit'
 
 plugin = (options = {}) -> (db) ->
     options.createProperties ?= true
+    options.validation ?= true
 
     Model = db.Model
-    Model.schema = applySchema
     Model.__bookshelf_schema_options = options
+    Model.schema = applySchema
+    Model::validate = validate
 
     replaceExtend Model
 
@@ -67,6 +69,21 @@ contributeToModel = (cls, entities) ->
 
 initSchema = ->
     e.initialize?(this) for e in @constructor.__schema
+    if @constructor.__bookshelf_schema_options.validation
+        @on 'saving', @validate, this
     undefined
+
+Fulfilled = -> new Promise (resolve, reject) -> resolve()
+Rejected = -> new Promise (resolve, reject) -> reject()
+
+validate = (self, attrs) ->
+    return Fulfilled() unless @constructor.__bookshelf_schema_options.validation
+    json = @toJSON(validating: true)
+    validations = @constructor.__bookshelf_schema.validations
+    modelValidations = @constructor.__bookshelf_schema.modelValidations
+    checkit = CheckIt(validations).run(json)
+    if @modelValidations and @modelValidations.length > 0
+        checkit = checkit.then -> CheckIt(all: model_validations).run(all: json)
+    checkit
 
 module.exports = plugin

@@ -22,6 +22,7 @@ describe "Bookshelf schema", ->
             ]
         }
 
+        User.__bookshelf_schema.should.be.defined
         User.prototype.hasOwnProperty('username').should.be.true
         User.prototype.hasOwnProperty('age').should.be.true
         User.prototype.hasOwnProperty('email').should.be.true
@@ -35,6 +36,7 @@ describe "Bookshelf schema", ->
                 EmailField 'email'
             ]
 
+        User.__bookshelf_schema.should.be.defined
         User.prototype.hasOwnProperty('username').should.be.true
         User.prototype.hasOwnProperty('age').should.be.true
         User.prototype.hasOwnProperty('email').should.be.true

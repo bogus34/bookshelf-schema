@@ -15,6 +15,7 @@
   "devDependencies": {
     "bookshelf": "^0.8.2",
     "chai": "^3.3.0",
+    "chai-as-promised": "^5.1.0",
     "co": "^4.6.0",
     "coffee-script": "^1.10.0",
     "knex": "^0.8.6",
