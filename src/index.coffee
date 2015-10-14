@@ -96,14 +96,22 @@ initSchema = ->
 Fulfilled = -> new Promise (resolve, reject) -> resolve()
 Rejected = -> new Promise (resolve, reject) -> reject()
 
+CheckItOptions = ->
+    memo = {}
+    for k in ['language', 'labels', 'messages']
+        if @constructor.__bookshelf_schema_options[k]
+            memo[k] = @constructor.__bookshelf_schema_options[k]
+    memo
+
 validate = (self, attrs) ->
     return Fulfilled() unless @constructor.__bookshelf_schema_options.validation
     json = @toJSON(validating: true)
     validations = @constructor.__bookshelf_schema.validations
     modelValidations = @constructor.__bookshelf_schema.modelValidations
-    checkit = CheckIt(validations).run(json)
+    options = CheckItOptions.call(this)
+    checkit = CheckIt(validations, options).run(json)
     if @modelValidations and @modelValidations.length > 0
-        checkit = checkit.then -> CheckIt(all: model_validations).run(all: json)
+        checkit = checkit.then -> CheckIt(all: model_validations, options).run(all: json)
     checkit
 
 module.exports = plugin

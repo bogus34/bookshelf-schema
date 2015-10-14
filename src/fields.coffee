@@ -69,7 +69,7 @@ class Field
 
     _normalizeRule: (rule, value) ->
         @_withMessage switch
-            when typeof value is 'object' and not isArray(value)
+            when typeof value is 'object' and value not instanceof Array
                 result = rule: rule
                 for k, v of value
                     result[k] = v

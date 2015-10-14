@@ -63,8 +63,59 @@ describe "Validation", ->
         class User extends db.Model
             tableName: 'users'
             @schema [
-                StringField 'username', validations: [{rule: 'minLength:5', message: '{{label}}: foo', label: 'foo'}]
+                StringField 'username', validations: [{
+                    rule: 'minLength:5',
+                    message: '{{label}}: foo',
+                    label: 'foo'
+                }]
             ]
 
         e = yield new User(username: 'bar').validate().should.be.rejected
         e.get('username').message.should.equal 'foo: foo'
+
+    describe 'Custom error messages', ->
+        it 'uses provided messages', co ->
+            class User extends db.Model
+                tableName: 'users'
+                @schema [
+                    StringField 'foo', min_length: {value: 10, message: 'foo'}
+                ]
+
+            e = yield new User(foo: 'bar').validate().should.be.rejected
+            e.get('foo').message.should.equal 'foo'
+
+        it 'uses field default error message and label', co ->
+            class User extends db.Model
+                tableName: 'users'
+                @schema [
+                    StringField 'username', min_length: 10, message: '{{label}}: foo', label: 'foo'
+                ]
+
+            e = yield new User(username: 'bar').validate().should.be.rejected
+            e.get('username').message.should.equal 'foo: foo'
+
+        it 'user field error message and label for field type validation', co ->
+            class User extends db.Model
+                tableName: 'users'
+                @schema [
+                    EmailField 'email', message: '{{label}}: foo', label: 'foo'
+                ]
+
+            e = yield new User(email: 'bar').validate().should.be.rejected
+            e.get('email').message.should.equal 'foo: foo'
+
+        it 'can use i18n for messages', co ->
+            db2 = Bookshelf db.knex
+            db2.plugin Schema(
+                language: 'ru',
+                messages: {email: 'Поле {{label}} должно содержать email-адрес'}
+            )
+
+            class User extends db2.Model
+                tableName: 'users'
+                @schema [
+                    EmailField 'email'
+                ]
+
+            e = yield new User(email: 'bar').validate().should.be.rejected
+            e.get('email').message.should.equal 'Поле email должно содержать email-адрес'
