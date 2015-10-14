@@ -32,15 +32,12 @@ describe "Validation", ->
         ]
 
     it 'should run validations on save', co ->
-        validationCalled = false
-        f = ->
-            validationCalled = true
-            false
+        f = spy -> false
         User.__bookshelf_schema.validations.username.push f
 
         e = yield new User(username: 'bogus').save().should.be.rejected
         e.should.be.an.instanceof CheckIt.Error
-        validationCalled.should.be.true
+        f.should.have.been.called
 
     it "shouldn't apply validation if plugin initialized with option validation: false", co ->
         db2 = Bookshelf db.knex

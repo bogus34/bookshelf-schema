@@ -1,3 +1,10 @@
+###
+#
+# StringField 'username', minLength: 3, maxLength: 10
+# StringField 'username', validations: [{rule: 'minLength:3', message: 'Invalid username'}]
+#
+###
+
 class Field
     readable: true
     writable: true
