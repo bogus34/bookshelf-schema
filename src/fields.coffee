@@ -12,7 +12,6 @@ class Field
         return new Field(name) unless this instanceof Field
         @name = name
         @options = options
-        @options.createProperty ?= true
     pluginOption: (name) -> @model.__bookshelf_schema_options[name]
     contributeToSchema: (schema) -> schema.push this
     contributeToModel: (cls) ->
@@ -21,7 +20,7 @@ class Field
             validations: {}
             parsers: []
             formatters: []
-        if @options.createProperty and @pluginOption('createProperties')
+        if (@options.createProperty || !@options.createProperty?) and @pluginOption('createProperties')
             @_createProperty(cls)
         if @pluginOption('validation')
             @_appendValidations(cls)
