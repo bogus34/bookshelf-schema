@@ -12,13 +12,13 @@ describe "Validation", ->
 
     before ->
         db = init.init()
-        init.users()
         User = class User extends db.Model
             tableName: 'users'
             @schema [
                 StringField 'username', minLength: 3, maxLength: 15
                 EmailField 'email'
             ]
+        init.users()
 
     it 'should create array of validations', ->
         User.__bookshelf_schema.validations.should.deep.equal

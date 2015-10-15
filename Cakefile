@@ -29,8 +29,8 @@ task "test", "run tests", (options) ->
     db_variant = options.db or 'sqlite'
     env = process.env
     env['NODE_ENV'] = 'test'
-    env['BOOKSHELF_FIELDS_TESTS_DB_VARIANT'] = db_variant
-    env['BOOKSHELF_FIELDS_TESTS_DEBUG'] = '1' if options['debug-sql']
+    env['BOOKSHELF_SCHEMA_TESTS_DB_VARIANT'] = db_variant
+    env['BOOKSHELF_SCHEMA_TESTS_DEBUG'] = '1' if options['debug-sql']
     spawn mocha,
         ['--compilers', 'coffee:coffee-script',
         '--reporter', "#{REPORTER}",
