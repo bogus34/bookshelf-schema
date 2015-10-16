@@ -2,7 +2,11 @@ Bookshelf = require 'bookshelf'
 Schema = require '../src/'
 init = require './init'
 Fields = require '../src/fields'
+Relations = require '../src/relations'
+
 {StringField, IntField, EmailField} = Fields
+{HasMany, BelongsTo} = Relations
+
 
 describe "Bookshelf schema", ->
     this.timeout 3000
@@ -75,3 +79,20 @@ describe "Bookshelf schema", ->
             @schema [ StringField 'id' ]
 
         new User(id: 1).id.should.equal 1
+
+    it 'creates accessors for relations', ->
+        class Photo extends db.Model
+
+        class User extends db.Model
+            tableName: 'users'
+            @schema [
+                HasMany Photo
+            ]
+
+        Photo.schema [
+            BelongsTo User
+        ]
+
+        User.prototype.hasOwnProperty('$photos').should.be.true
+        User.prototype.photos.should.be.a.function
+

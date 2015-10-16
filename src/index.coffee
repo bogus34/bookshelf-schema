@@ -106,8 +106,8 @@ CheckItOptions = ->
 validate = (self, attrs) ->
     return Fulfilled() unless @constructor.__bookshelf_schema_options.validation
     json = @toJSON(validating: true)
-    validations = @constructor.__bookshelf_schema.validations
-    modelValidations = @constructor.__bookshelf_schema.modelValidations
+    validations = @constructor.__bookshelf_schema?.validations || []
+    modelValidations = @constructor.__bookshelf_schema?.modelValidations
     options = CheckItOptions.call(this)
     checkit = CheckIt(validations, options).run(json)
     if @modelValidations and @modelValidations.length > 0

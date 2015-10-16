@@ -55,73 +55,100 @@
 # MorphOne, MorphMany, MorphTo
 #
 ###
-class Relation
-    constructor: ->
-        return new Relation(arguments...) unless this instanceof Relation
-        @_parseConstructorArguments()
 
-    pluginOption: (name) -> @model.__bookshelf_schema_options[name]
+pluralize = require 'pluralize'
+
+class Relation
+    @multiple: false
+
+    constructor: (model, options = {}) ->
+        return new Relation(arguments...) unless this instanceof Relation
+        @relatedModel = model
+        @options = options
+        @name = @options.name || @_deduceName(@relatedModel)
+
+    pluginOption: (name, defaultVal) -> @model.__bookshelf_schema_options[name] or defaultVal
     contributeToSchema: (schema) -> schema.push this
     contributeToModel: (cls) ->
         @model = cls
-        @_createRelation(cls) unless @name of cls.prototype
-        if (@options.createProperty || !@options.createProperty?) and @pluginOption('createProperties')
+        @accessor = @options.accessor || @_deduceAccessorName(@name)
+        cls::[@name] = @_createRelation(cls) unless @name of cls.prototype
+        if (@options.createProperty or !@options.createProperty?) and @pluginOption('createProperties')
             @_createProperty(cls)
 
-    _parseConstructorArguments: ->
-        # name, model, options
-        if arguments.length is 3
-            @name = arguments[0]
-            @relatedModel = arguments[1]
-            @options = arguments[2]
+    createGetter: ->
+        self = this
+        -> new RelatedCollectionHelper(this, self)
 
-
-        else if arguments.length is 2
-            # model, options
-            if typeof arguments[1] is 'object'
-                @relatedModel = arguments[0]
-                @name = @deduceName @relatedModel
-                @options = arguments[1]
-
-            # name, model
-            else
-                @name = arguments[0]
-                @relatedModel = arguments[0]
-                @options = {}
-        # model
-        else
-            @relatedModel = arguments[0]
-            @name = @deduceName @relatedModel
-
-    _prefix: -> @options.prefix or @pluginOption('relationsPrefix') or '$'
+    createSetter: ->
 
     _createProperty: (cls) ->
-        return if @name is 'id' or @name of cls.prototype
-        name = @name
-        spec =
-            get: -> @related(name)
+        return if @name is 'id' or @accessor of cls.prototype
+        spec = {}
+        getter = @createGetter()
+        setter = @createSetter()
+        spec.get = getter if getter
+        spec.set = setter if setter
 
-        Object.defineProperty cls.prototype, "#{@prefix()}#{@name}", spec
+        Object.defineProperty cls.prototype, @accessor, spec
+
+    _deduceName: ->
+        if @constructor.multiple
+            pluralize @relatedModel.name.toLowerCase()
+        else
+            @relatedModel.name.toLowerCase()
+    _deduceAccessorName: -> "#{@pluginOption('relationAccessorPrefix', '$')}#{@name}"
+
+class BaseHelper
+    constructor: (@model, @relation) ->
+        @related = @model.related @relation.name
+
+class RelatedCollectionHelper extends BaseHelper
+
+for method in ['at', 'get']
+    do (method) ->
+        RelatedCollectionHelper::[method] = ->
+            @related[method].apply(@related, arguments)
 
 class HasOne extends Relation
+    constructor: (model, options = {}) ->
+        return new HasOne(arguments...) unless this instanceof HasOne
+        super
+
     _createRelation: (cls) ->
         related = @relatedModel
         foreignKey = @options.foreignKey
         -> @hasOne related, foreignKey
 
 class BelongsTo extends Relation
+    constructor: (model, options = {}) ->
+        return new BelongsTo(arguments...) unless this instanceof BelongsTo
+        super
+
     _createRelation: (cls) ->
         related = @relatedModel
         foreignKey = @options.foreignKey
         -> @belongsTo related, foreignKey
 
 class HasMany extends Relation
+    @multiple: true
+
+    constructor: (model, options = {}) ->
+        return new HasMany(arguments...) unless this instanceof HasMany
+        super
+
     _createRelation: (cls) ->
         related = @relatedModel
         foreignKey = @options.foreignKey
         -> @hasMany related, foreignKey
 
 class BelongsToMany extends Relation
+    @multiple: true
+
+    constructor: (model, options = {}) ->
+        return new BelongsToMany(arguments...) unless this instanceof BelongsToMany
+        super
+
     _createRelation: (cls) ->
         related = @relatedModel
         table = @options.table
@@ -130,6 +157,10 @@ class BelongsToMany extends Relation
         -> @belongsToMany related, table, foreignKey, otherKey
 
 class MorphOne extends Relation
+    constructor: (model, options = {}) ->
+        return new MorphOne(arguments...) unless this instanceof MorphOne
+        super
+
     _createRelation: (cls) ->
         related = @relatedModel
         name = @options.name
@@ -138,6 +169,12 @@ class MorphOne extends Relation
         -> @morphOne related, name, columnNames, morphValue
 
 class MorphMany extends Relation
+    @multiple: true
+
+    constructor: (model, options = {}) ->
+        return new MorphMany(arguments...) unless this instanceof MorphMany
+        super
+
     _createRelation: (cls) ->
         related = @relatedModel
         name = @options.name
@@ -146,8 +183,12 @@ class MorphMany extends Relation
         -> @morphMany related, name, columnNames, morphValue
 
 class MorphTo extends Relation
+    constructor: (model, options = {}) ->
+        return new MorphTo(arguments...) unless this instanceof MorphTo
+        super
+
     _createRelation: (cls) ->
-        throw "Not implemented"
+        throw new Error("Not implemented")
 
 module.exports =
     HasOne: HasOne

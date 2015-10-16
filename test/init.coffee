@@ -46,6 +46,16 @@ users = co ->
         table.date 'birth_date'
         table.json 'additional_data'
 
+photos = co ->
+    init() unless db
+    knex = db.knex
+    yield knex.schema.dropTableIfExists('photos')
+    yield knex.schema.createTable 'photos', (table) ->
+        table.increments('id').primary()
+        table.string 'filename', 255
+        table.integer 'user_id'
+
 module.exports =
     init: init
     users: users
+    photos: photos
