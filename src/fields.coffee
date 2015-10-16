@@ -6,8 +6,6 @@
 ###
 
 class Field
-    readable: true
-    writable: true
     constructor: (name, options = {}) ->
         return new Field(name) unless this instanceof Field
         @name = name
@@ -20,7 +18,7 @@ class Field
             validations: {}
             parsers: []
             formatters: []
-        if (@options.createProperty || !@options.createProperty?) and @pluginOption('createProperties')
+        if (@options.createProperty or !@options.createProperty?) and @pluginOption('createProperties')
             @_createProperty(cls)
         if @pluginOption('validation')
             @_appendValidations(cls)
@@ -52,8 +50,10 @@ class Field
     _createProperty: (cls) ->
         return if @name is 'id' or @name of cls.prototype
         spec = {}
-        spec.get = @createGetter() if @readable
-        spec.set = @createSetter() if @writable
+        getter = @createGetter()
+        setter = @createSetter()
+        spec.get = getter if getter
+        spec.set = setter if setter
         Object.defineProperty cls.prototype, @name, spec
 
     _appendValidations: (model) ->
