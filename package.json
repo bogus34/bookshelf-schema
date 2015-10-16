@@ -25,6 +25,7 @@
     "sqlite3": "^3.1.0"
   },
   "dependencies": {
-    "checkit": "^0.6.0"
+    "checkit": "^0.6.0",
+    "pluralize": "^1.2.1"
   }
 }
