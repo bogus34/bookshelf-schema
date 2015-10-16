@@ -10,28 +10,33 @@ Relations = require '../src/relations'
 describe "Relations", ->
     this.timeout 3000
     db = null
+    User = null
+    Photo = null
 
     before co ->
         db = init.init()
         yield [ init.users(), init.photos() ]
 
-    afterEach co ->
-        yield [ db.knex('users').truncate(), db.knex('photos').truncate() ]
-
-    it 'does something relevant', co ->
+    beforeEach ->
         class Photo extends db.Model
             tableName: 'photos'
 
         class User extends db.Model
             tableName: 'users'
             @schema [
+                StringField 'username'
                 HasMany Photo
             ]
 
         Photo.schema [
+            StringField 'filename'
             BelongsTo User
         ]
 
+    afterEach co ->
+        yield [ db.knex('users').truncate(), db.knex('photos').truncate() ]
+
+    it 'does something relevant', co ->
         alice = yield new User(username: 'alice').save()
         yield [
             new Photo(filename: 'photo1.jpg', user_id: alice.id).save()
@@ -41,3 +46,21 @@ describe "Relations", ->
         yield alice.load('photos')
 
         alice.$photos.at(0).should.be.an.instanceof Photo
+
+    it 'uses passed query processor', co ->
+        class User extends db.Model
+            tableName: 'users'
+            @schema [
+                HasMany Photo, query: -> @query('where', 'filename', '=', 'photo1.jpg')
+            ]
+
+        alice = yield new User(username: 'alice').save()
+        yield [
+            new Photo(filename: 'photo1.jpg', user_id: alice.id).save()
+            new Photo(filename: 'photo2.jpg', user_id: alice.id).save()
+        ]
+
+        photos = yield alice.$photos.fetch()
+        photos.length.should.be.equal 1
+        photos.first().should.be.an.instanceof Photo
+        photos.first().filename.should.be.equal 'photo1.jpg'

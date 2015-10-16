@@ -29,16 +29,16 @@
 #     photo.related('user')                   # Model
 #     photo.$user                             # RelationHelper
 #     photo.$user = user                      # set user_id to user.id and save
-#     photo.$user.transacting(t) = user       # set user_id to user.id and save within transaction
+#     photo.transacting(t).$user = user       # set user_id to user.id and save within transaction
 #
 # User.forge(id: 1).fetch(withRelated: 'photos').then (user) ->
 #     user.photos                             # function
 #     user.related('photos')                  # Collection
 #     user.$photos                            # RelationHelper
 #     user.$photos = [...]                    # detach all photos and attach listed
-#     user.$photos.transacting(t) = [...]
+#     user.transacting(t).$photos = [...]
 #     user.$photos.attach(...)                # attach listed photos and save them
-#     user.$photos.transacting(t).attach(...) # attach listed photos and save them within transaction
+#     user.transacting(t).$photos.attach(...) # attach listed photos and save them within transaction
 #     user.$photos.detach(...)                # detach listed photos
 #
 # class User extends db.Model
@@ -72,15 +72,25 @@ class Relation
     contributeToModel: (cls) ->
         @model = cls
         @accessor = @options.accessor || @_deduceAccessorName(@name)
-        cls::[@name] = @_createRelation(cls) unless @name of cls.prototype
+        cls::[@name] = @createRelation(cls) unless @name of cls.prototype
         if (@options.createProperty or !@options.createProperty?) and @pluginOption('createProperties')
             @_createProperty(cls)
 
+    createRelation: (cls) ->
+        if @options.query
+            builder = @_createRelation(cls)
+            query = @options.query
+            -> query.apply builder.call(this)
+        else
+            @_createRelation(cls)
+
     createGetter: ->
         self = this
-        -> new RelatedCollectionHelper(this, self)
+        -> self.augementRelated @related(self.name)
 
     createSetter: ->
+
+    augementRelated: (related) -> related
 
     _createProperty: (cls) ->
         return if @name is 'id' or @accessor of cls.prototype
@@ -97,18 +107,8 @@ class Relation
             pluralize @relatedModel.name.toLowerCase()
         else
             @relatedModel.name.toLowerCase()
+
     _deduceAccessorName: -> "#{@pluginOption('relationAccessorPrefix', '$')}#{@name}"
-
-class BaseHelper
-    constructor: (@model, @relation) ->
-        @related = @model.related @relation.name
-
-class RelatedCollectionHelper extends BaseHelper
-
-for method in ['at', 'get']
-    do (method) ->
-        RelatedCollectionHelper::[method] = ->
-            @related[method].apply(@related, arguments)
 
 class HasOne extends Relation
     constructor: (model, options = {}) ->
