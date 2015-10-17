@@ -93,8 +93,7 @@ initSchema = ->
         @on 'saving', @validate, this
     undefined
 
-Fulfilled = -> new Promise (resolve, reject) -> resolve()
-Rejected = -> new Promise (resolve, reject) -> reject()
+{Fulfilled} = require './utils'
 
 CheckItOptions = ->
     memo = {}

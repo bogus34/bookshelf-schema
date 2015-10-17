@@ -27,18 +27,17 @@
 # Photo.forge(id: 1).fetch(withRelated: 'user').then (photo) ->
 #     photo.user                              # function
 #     photo.related('user')                   # Model
-#     photo.$user                             # RelationHelper
-#     photo.$user = user                      # set user_id to user.id and save
-#     photo.transacting(t).$user = user       # set user_id to user.id and save within transaction
+#     photo.$user                             # Collection
+#     photo.$user = user                      # set user_id to user.id
+#     photo.$user.assign(user)                # set user_id to user.id and save
 #
 # User.forge(id: 1).fetch(withRelated: 'photos').then (user) ->
 #     user.photos                             # function
 #     user.related('photos')                  # Collection
-#     user.$photos                            # RelationHelper
+#     user.$photos                            # Collection
 #     user.$photos = [...]                    # detach all photos and attach listed
-#     user.transacting(t).$photos = [...]
+#     user.$photos.assign(...)                # detach all photos and attach listed
 #     user.$photos.attach(...)                # attach listed photos and save them
-#     user.transacting(t).$photos.attach(...) # attach listed photos and save them within transaction
 #     user.$photos.detach(...)                # detach listed photos
 #
 # class User extends db.Model
@@ -57,6 +56,15 @@
 ###
 
 pluralize = require 'pluralize'
+{IntField} = require './fields'
+{Fulfilled} = require './utils'
+
+pluck = (obj, fields...) ->
+    return {} unless obj?
+    result = {}
+    for f in fields when f of obj
+        result[f] = obj[f]
+    result
 
 class Relation
     @multiple: false
@@ -77,20 +85,33 @@ class Relation
             @_createProperty(cls)
 
     createRelation: (cls) ->
-        if @options.query
+        relation = if @options.query
             builder = @_createRelation(cls)
             query = @options.query
             -> query.apply builder.call(this)
         else
             @_createRelation(cls)
 
+        self = this
+        -> self._augementRelated this, relation.apply(this, arguments)
+
+    resolveRelatedModel: ->
+        @relatedModel
+
     createGetter: ->
         self = this
-        -> self.augementRelated @related(self.name)
+        -> @related(self.name)
 
     createSetter: ->
 
-    augementRelated: (related) -> related
+    _augementRelated: (parent, related) ->
+        return related unless @constructor.helperMethods
+        self = this
+        for name, method of @constructor.helperMethods when name not of related
+            related[name] = (args...) ->
+                args.unshift self
+                method.apply parent, args
+        related
 
     _createProperty: (cls) ->
         return if @name is 'id' or @accessor of cls.prototype
@@ -124,6 +145,28 @@ class BelongsTo extends Relation
     constructor: (model, options = {}) ->
         return new BelongsTo(arguments...) unless this instanceof BelongsTo
         super
+
+    contributeToSchema: (schema) ->
+        super
+        schema.push IntField "#{@name}_id"
+
+    @helperMethods:
+        assign: (relation, obj, options) ->
+            options = pluck options, 'transacting'
+            foreignKey = relation.foreignKey()
+
+            related = if obj is null
+                Fulfilled {id: null}
+            else if obj.constructor is Object
+                @resolveRelatedModel().forge(obj).save(options)
+            else
+                Fulfilled obj
+
+            related.then (related) =>
+                options.patch = true
+                @save(foreignKey, related.id, options)
+
+    foreignKey: -> @options.foreignKey or "#{@name}_id"
 
     _createRelation: (cls) ->
         related = @relatedModel
