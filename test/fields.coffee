@@ -78,6 +78,14 @@ describe "Fields", ->
                 new User(code: 10).validate().should.be.rejected
             ]
 
+        it 'keeps nulls', co ->
+            User = define [F.IntField 'code']
+
+            user = yield new User(code: null).save()
+            expect(user.code).to.be.null
+            user = yield User.forge(id: user.id).fetch()
+            expect(user.code).to.be.null
+
     describe 'FloatField', ->
         it 'validates floats', co ->
             User = define [F.FloatField 'code']
@@ -91,6 +99,14 @@ describe "Fields", ->
                 new User(code: '10.5').validate().should.be.fulfilled
                 new User(code: '-10.5').validate().should.be.fulfilled
             ]
+
+        it 'keeps nulls', co ->
+            User = define [F.FloatField 'code']
+
+            user = yield new User(code: null).save()
+            expect(user.code).to.be.null
+            user = yield User.forge(id: user.id).fetch()
+            expect(user.code).to.be.null
 
     describe 'BooleanField', ->
         it 'stores boolean values', co ->
@@ -118,6 +134,14 @@ describe "Fields", ->
                 new User(last_login: 'foobar').validate().should.be.rejected
             ]
 
+        it 'keeps nulls', co ->
+            User = define [F.DateTimeField 'last_login']
+
+            user = yield new User(last_login: null).save()
+            expect(user.last_login).to.be.null
+            user = yield User.forge(id: user.id).fetch()
+            expect(user.last_login).to.be.null
+
     describe 'DateField', ->
         truncate_date = (d) -> new Date(d.getFullYear(), d.getMonth(), d.getDate())
 
@@ -130,7 +154,7 @@ describe "Fields", ->
             user.birth_date.toISOString().should.equal truncate_date(date).toISOString()
 
         it 'validates date', co ->
-            User = define [F.DateTimeField 'birth_date']
+            User = define [F.DateField 'birth_date']
 
             yield [
                 new User(birth_date: new Date()).validate().should.be.fulfilled
@@ -138,6 +162,14 @@ describe "Fields", ->
                 new User(birth_date: '1/1/1').validate().should.be.fulfilled
                 new User(birth_date: 'foobar').validate().should.be.rejected
             ]
+
+        it 'keeps nulls', co ->
+            User = define [F.DateField 'birth_date']
+
+            user = yield new User(birth_date: null).save()
+            expect(user.birth_date).to.be.null
+            user = yield User.forge(id: user.id).fetch()
+            expect(user.birth_date).to.be.null
 
     describe 'JSONField', ->
         it 'stores JSON objects', co ->
