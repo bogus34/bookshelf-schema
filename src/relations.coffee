@@ -57,7 +57,7 @@
 
 pluralize = require 'pluralize'
 {IntField} = require './fields'
-{Fulfilled} = require './utils'
+{Fulfilled, Rejected} = require './utils'
 
 pluck = (obj, fields...) ->
     return {} unless obj?
@@ -95,9 +95,6 @@ class Relation
         self = this
         -> self._augementRelated this, relation.apply(this, arguments)
 
-    resolveRelatedModel: ->
-        @relatedModel
-
     createGetter: ->
         self = this
         -> @related(self.name)
@@ -108,9 +105,10 @@ class Relation
         return related unless @constructor.helperMethods
         self = this
         for name, method of @constructor.helperMethods when name not of related
-            related[name] = (args...) ->
-                args.unshift self
-                method.apply parent, args
+            do (method) ->
+                related[name] = (args...) ->
+                    args = [parent, self].concat args
+                    method.apply this, args
         related
 
     _createProperty: (cls) ->
@@ -151,22 +149,18 @@ class BelongsTo extends Relation
         schema.push IntField "#{@name}_id"
 
     @helperMethods:
-        assign: (relation, obj, options) ->
+        assign: (model, relation, obj, options) ->
             options = pluck options, 'transacting'
-            foreignKey = relation.foreignKey()
+            foreignKey = @relatedData.key('foreignKey')
 
             related = if obj is null
                 Fulfilled {id: null}
             else if obj.constructor is Object
-                @resolveRelatedModel().forge(obj).save(options)
+                @create(obj, options)
             else
                 Fulfilled obj
 
-            related.then (related) =>
-                options.patch = true
-                @save(foreignKey, related.id, options)
-
-    foreignKey: -> @options.foreignKey or "#{@name}_id"
+            related.then (related) => model.save(foreignKey, related.id, options)
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -179,6 +173,88 @@ class HasMany extends Relation
     constructor: (model, options = {}) ->
         return new HasMany(arguments...) unless this instanceof HasMany
         super
+
+    @helperMethods:
+        assign: (model, relation, list, options) ->
+            return unless list?
+            list = [list] unless list instanceof Array
+            options = pluck options, 'transacting'
+            foreignKey = @relatedData.key('foreignKey')
+
+            @model.query().where(foreignKey, '=', model.id).pluck('id')
+            .then (currentIds) =>
+                listIds = for obj in list
+                    if typeof obj is 'number'
+                        obj
+                    else if obj instanceof @model and obj.id?
+                        obj.id
+                    else
+                        continue
+
+                [detachIds, attachObjs] = switch
+                    when currentIds.length is 0 or listIds.length is 0
+                        [currentIds, list]
+                    else
+                        a = []
+                        b = list[..]
+                        for id in currentIds
+                            pos = listIds.indexOf(id)
+                            if pos is -1
+                                a.push id
+                            else
+                                b.splice pos, 1
+                        [a, b]
+
+                @detach(detachIds, options)
+                .then => @attach(attachObjs, options)
+
+        # TODO: can be optimized by batch-loading of models by id and batch-creating new models
+        attach: (model, relation, list, options) ->
+            return unless list?
+            list = [list] unless list instanceof Array
+            options = pluck options, 'transacting'
+            foreignKey = @relatedData.key('foreignKey')
+            try
+                pending = for obj in list
+                    switch
+                        when typeof obj is 'number'
+                            @model.forge(id: obj).fetch(options)
+                        when obj.constructor is Object
+                            Fulfilled @model.forge(obj)
+                        when obj instanceof @model
+                            Fulfilled obj
+                        else
+                            throw new Error("Can't attach #{obj} to #{model} as a #{relation.name}")
+
+                Promise.all(pending).then (list) ->
+                    Promise.all( for obj in list
+                        obj.set(foreignKey, model.id).save(options)
+                    )
+            catch e
+                Rejected e
+
+        # TODO: can be optimized by batch-loading models by id
+        detach: (model, relation, list, options) ->
+            return unless list?
+            list = [list] unless list instanceof Array
+            options = pluck options, 'transacting'
+            foreignKey = @relatedData.key('foreignKey')
+            try
+                pending = for obj in list
+                    switch
+                        when typeof obj is 'number'
+                            @model.forge(id: obj).fetch(options)
+                        when obj instanceof @model
+                            Fulfilled obj
+                        else
+                            throw new Error("Can't detach #{obj} from #{model} #{relation.name}")
+
+                Promise.all(pending).then (list) ->
+                    Promise.all( for obj in list
+                        obj.set(foreignKey, null).save(options)
+                    )
+            catch e
+                Rejected e
 
     _createRelation: (cls) ->
         related = @relatedModel

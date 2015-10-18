@@ -89,6 +89,7 @@ describe "Relations", ->
         it 'creates accessor', co ->
             [alice, photos] = yield fixtures.alice()
             photo1 = photos[0]
+            photo1.user.should.be.a 'function'
             yield photo1.load 'user'
             photo1.$user.should.be.an.instanceof User
             photo1.$user.username.should.equal alice.username
@@ -111,3 +112,49 @@ describe "Relations", ->
             yield photo1.$user.assign(null)
             photo1 = yield Photo.forge(id: photo1.id).fetch()
             expect(photo1.user_id).to.be.null
+
+    describe 'HasMany', ->
+        beforeEach ->
+            class Photo extends db.Model
+                tableName: 'photos'
+
+            class User extends db.Model
+                tableName: 'users'
+                @schema [
+                    StringField 'username'
+                    HasMany Photo
+                ]
+
+            Photo.schema [
+                StringField 'filename'
+                BelongsTo User
+            ]
+
+        afterEach co ->
+            yield [ db.knex('users').truncate(), db.knex('photos').truncate() ]
+
+        it 'creates accessor', co ->
+            [alice, _] = yield fixtures.alice()
+            alice.photos.should.be.a 'function'
+            yield alice.load('photos')
+            alice.$photos.should.be.an.instanceof db.Collection
+            alice.$photos.at(0).user_id.should.be.equal alice.id
+
+        it 'can assign list of objects to relation', co ->
+            [alice, [photo1, photo2]] = yield fixtures.alice()
+
+            bob = yield new User(username: 'bob').save()
+            photo3 = yield new Photo(filename: 'photo3.jpg', user_id: bob.id).save()
+
+            yield bob.$photos.assign [photo1]
+            bob = yield User.forge(id: bob.id).fetch(withRelated: 'photos')
+            bob.$photos.length.should.equal 1
+            bob.$photos.at(0).id.should.equal photo1.id
+
+        it 'detach all related objects when empty list assigned', co ->
+            [alice, _] = yield fixtures.alice()
+
+            Photo.where('user_id', '=', alice.id).count().should.become 2
+            yield alice.$photos.assign []
+            Photo.where('user_id', '=', alice.id).count().should.become 0
+
