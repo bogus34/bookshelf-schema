@@ -62,3 +62,25 @@ describe "Relations", ->
             expect(profile.user_id).to.be.null
             alice.$profile.id.should.equal profile2.id
 
+        it 'can assign plain object', co ->
+            [alice, profile] = yield fixtures.alice()
+
+            yield alice.$profile.assign {greetings: 'Hi!'}
+            [alice, profile] = yield [
+                User.forge(id: alice.id).fetch(withRelated: 'profile')
+                Profile.forge(id: profile.id).fetch()
+            ]
+
+            alice.$profile.greetings.should.equal 'Hi!'
+            expect(profile.user_id).to.be.null
+
+        it 'can assign by id', co ->
+            [alice, profile] = yield fixtures.alice()
+
+            profile2 = yield new Profile(greetings: 'Hi!').save()
+            yield alice.$profile.assign profile2.id
+            profile = yield Profile.forge(id: profile.id).fetch()
+            alice = yield User.forge(id: alice.id).fetch(withRelated: 'profile')
+
+            expect(profile.user_id).to.be.null
+            alice.$profile.id.should.equal profile2.id

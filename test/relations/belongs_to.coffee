@@ -47,27 +47,39 @@ describe "Relations", ->
             yield [ db.knex('users').truncate(), db.knex('photos').truncate() ]
 
         it 'creates accessor', co ->
-            [alice, photos] = yield fixtures.alice()
-            photo1 = photos[0]
+            [alice, [photo1, _]] = yield fixtures.alice()
             photo1.user.should.be.a 'function'
             yield photo1.load 'user'
             photo1.$user.should.be.an.instanceof User
             photo1.$user.username.should.equal alice.username
 
-        it 'can assign related object', co ->
-            [alice, photos] = yield fixtures.alice()
+        it 'can assign model', co ->
+            [alice, [photo1, _]] = yield fixtures.alice()
 
             bob = yield new User(username: 'bob').save()
-            photo1 = photos[0]
-            yield photo1.$user.assign(bob)
-            photo1 = yield Photo.forge(id: photo1.id).fetch()
+            yield photo1.$user.assign bob
+            photo1 = yield Photo.forge(id: photo1.id).fetch(withRelated: 'user')
             photo1.user_id.should.equal bob.id
-            user = yield photo1.$user.fetch()
-            user.id.should.equal bob.id
+            photo1.$user.id.should.equal bob.id
+
+        it 'can assign plain object', co ->
+            [alice, [photo1, _]] = yield fixtures.alice()
+
+            yield photo1.$user.assign {username: 'bob'}
+            photo1 = yield Photo.forge(id: photo1.id).fetch(withRelated: 'user')
+            photo1.$user.username.should.equal 'bob'
+
+        it 'can assign by id', co ->
+            [alice, [photo1, _]] = yield fixtures.alice()
+
+            bob = yield new User(username: 'bob').save()
+            yield photo1.$user.assign bob.id
+            photo1 = yield Photo.forge(id: photo1.id).fetch(withRelated: 'user')
+            photo1.user_id.should.equal bob.id
+            photo1.$user.id.should.equal bob.id
 
         it 'can assign null as a related object', co ->
-            [alice, photos] = yield fixtures.alice()
-            photo1 = photos[0]
+            [alice, [photo1, _]] = yield fixtures.alice()
 
             yield photo1.$user.assign(null)
             photo1 = yield Photo.forge(id: photo1.id).fetch()

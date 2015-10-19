@@ -142,17 +142,19 @@ class HasOne extends Relation
             try
                 obj = switch
                     when obj is null
-                        null
+                        Fulfilled null
                     when obj instanceof this.constructor
-                        obj
+                        Fulfilled obj
                     when obj.constructor is Object
-                        @forge(obj, options)
+                        Fulfilled @constructor.forge(obj, options)
+                    when typeof obj is 'number'
+                        @constructor.forge(id: obj).fetch()
                     else
                         throw new Error("Can't assign #{obj} to #{model} as a #{relation.name}")
 
                 old = model[relation.name]().fetch()
 
-                old.then (old) ->
+                Promise.all([old, obj]).then ([old, obj]) ->
                     pending = []
                     if old.id?
                         old = old.clone() # force knex not to use relatedData
@@ -183,14 +185,22 @@ class BelongsTo extends Relation
             options = pluck options, 'transacting'
             foreignKey = @relatedData.key 'foreignKey'
 
-            related = if obj is null
-                Fulfilled {id: null}
-            else if obj.constructor is Object
-                @create(obj, options)
-            else
-                Fulfilled obj
+            try
+                related = switch
+                    when obj is null
+                        Fulfilled {id: null}
+                    when typeof obj is 'number'
+                        @constructor.forge(id: obj).fetch(options)
+                    when obj.constructor is Object
+                        @constructor.forge(obj).save(options)
+                    when obj instanceof @constructor
+                        Fulfilled obj
+                    else
+                        throw new Error("Can't assign #{obj} to #{model} as a #{relation.name}")
 
-            related.then (related) -> model.save(foreignKey, related.id, options)
+                related.then (related) -> model.save(foreignKey, related.id, options)
+            catch e
+                Rejected e
 
     _createRelation: (cls) ->
         related = @relatedModel

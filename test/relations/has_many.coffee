@@ -53,7 +53,7 @@ describe "Relations", ->
             alice.$photos.should.be.an.instanceof db.Collection
             alice.$photos.at(0).user_id.should.be.equal alice.id
 
-        it 'can assign list of objects to relation', co ->
+        it 'can assign list of models to relation', co ->
             [alice, [photo1, photo2]] = yield fixtures.alice()
 
             bob = yield new User(username: 'bob').save()
@@ -68,9 +68,22 @@ describe "Relations", ->
             alice.$photos.length.should.equal 1
             alice.$photos.at(0).id.should.equal photo2.id
 
+        it 'can also assign plain objects and ids', co ->
+            [alice, [photo1, photo2]] = yield fixtures.alice()
+
+            bob = yield new User(username: 'bob').save()
+            yield bob.$photos.assign [{filename: 'photo3.jpg'}, photo1.id]
+            [bob, alice] = yield [
+                 User.forge(id: bob.id).fetch(withRelated: 'photos')
+                 User.forge(id: alice.id).fetch(withRelated: 'photos')
+            ]
+            bob.$photos.length.should.equal 2
+            bob.$photos.pluck('filename').sort().should.deep.equal ['photo1.jpg', 'photo3.jpg']
+
         it 'detach all related objects when empty list assigned', co ->
             [alice, _] = yield fixtures.alice()
 
             Photo.where('user_id', '=', alice.id).count().should.become 2
             yield alice.$photos.assign []
             Photo.where('user_id', '=', alice.id).count().should.become 0
+
