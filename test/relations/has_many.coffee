@@ -1,8 +1,8 @@
 Bookshelf = require 'bookshelf'
-Schema = require '../src/'
-init = require './init'
-Fields = require '../src/fields'
-Relations = require '../src/relations'
+Schema = require '../../src/'
+init = require '../init'
+Fields = require '../../src/fields'
+Relations = require '../../src/relations'
 
 {StringField, IntField, EmailField} = Fields
 {HasMany, BelongsTo} = Relations
@@ -26,7 +26,7 @@ describe "Relations", ->
         db = init.init()
         yield [ init.users(), init.photos() ]
 
-    describe 'Common', ->
+    describe 'HasMany', ->
         beforeEach ->
             class Photo extends db.Model
                 tableName: 'photos'
@@ -46,22 +46,27 @@ describe "Relations", ->
         afterEach co ->
             yield [ db.knex('users').truncate(), db.knex('photos').truncate() ]
 
-        it 'does something relevant', co ->
+        it 'creates accessor', co ->
             [alice, _] = yield fixtures.alice()
+            alice.photos.should.be.a 'function'
             yield alice.load('photos')
+            alice.$photos.should.be.an.instanceof db.Collection
+            alice.$photos.at(0).user_id.should.be.equal alice.id
 
-            alice.$photos.at(0).should.be.an.instanceof Photo
+        it 'can assign list of objects to relation', co ->
+            [alice, [photo1, photo2]] = yield fixtures.alice()
 
-        it 'uses passed query processor', co ->
-            class User extends db.Model
-                tableName: 'users'
-                @schema [
-                    HasMany Photo, query: -> @query('where', 'filename', '=', 'photo1.jpg')
-                ]
+            bob = yield new User(username: 'bob').save()
+            photo3 = yield new Photo(filename: 'photo3.jpg', user_id: bob.id).save()
 
+            yield bob.$photos.assign [photo1]
+            bob = yield User.forge(id: bob.id).fetch(withRelated: 'photos')
+            bob.$photos.length.should.equal 1
+            bob.$photos.at(0).id.should.equal photo1.id
+
+        it 'detach all related objects when empty list assigned', co ->
             [alice, _] = yield fixtures.alice()
 
-            photos = yield alice.$photos.fetch()
-            photos.length.should.be.equal 1
-            photos.first().should.be.an.instanceof Photo
-            photos.first().filename.should.be.equal 'photo1.jpg'
+            Photo.where('user_id', '=', alice.id).count().should.become 2
+            yield alice.$photos.assign []
+            Photo.where('user_id', '=', alice.id).count().should.become 0

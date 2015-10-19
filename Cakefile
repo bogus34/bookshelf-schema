@@ -36,7 +36,7 @@ task "test", "run tests", (options) ->
         '--reporter', "#{REPORTER}",
         '--require', 'coffee-script/register',
         '--require', path.join('test', 'test_helper.coffee'),
-        '--colors', 'test'],
+        '--colors', '--recursive', 'test'],
         'env': env, 'cwd': process.cwd(), 'stdio': 'inherit'
 
 task "build", "build library", ->
