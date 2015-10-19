@@ -60,9 +60,13 @@ describe "Relations", ->
             photo3 = yield new Photo(filename: 'photo3.jpg', user_id: bob.id).save()
 
             yield bob.$photos.assign [photo1]
+
             bob = yield User.forge(id: bob.id).fetch(withRelated: 'photos')
+            alice = yield User.forge(id: alice.id).fetch(withRelated: 'photos')
             bob.$photos.length.should.equal 1
             bob.$photos.at(0).id.should.equal photo1.id
+            alice.$photos.length.should.equal 1
+            alice.$photos.at(0).id.should.equal photo2.id
 
         it 'detach all related objects when empty list assigned', co ->
             [alice, _] = yield fixtures.alice()
