@@ -55,7 +55,18 @@ photos = co ->
         table.string 'filename', 255
         table.integer 'user_id'
 
+profiles = co ->
+    init() unless db
+    knex = db.knex
+    yield knex.schema.dropTableIfExists('profiles')
+    yield knex.schema.createTable 'profiles', (table) ->
+        table.increments('id').primary()
+        table.string 'greetings', 255
+        table.integer 'user_id'
+
 module.exports =
     init: init
     users: users
     photos: photos
+    profiles: profiles
+

@@ -134,6 +134,36 @@ class HasOne extends Relation
         return new HasOne(arguments...) unless this instanceof HasOne
         super
 
+    @helperMethods:
+        assign: (model, relation, obj, options) ->
+            options = pluck options, 'transacting'
+            foreignKey = @relatedData.key 'foreignKey'
+
+            try
+                obj = switch
+                    when obj is null
+                        null
+                    when obj instanceof this.constructor
+                        obj
+                    when obj.constructor is Object
+                        @forge(obj, options)
+                    else
+                        throw new Error("Can't assign #{obj} to #{model} as a #{relation.name}")
+
+                old = model[relation.name]().fetch()
+
+                old.then (old) ->
+                    pending = []
+                    if old.id?
+                        old = old.clone() # force knex not to use relatedData
+                        pending.push old.save(foreignKey, null, options)
+                    if obj?
+                        obj.set(foreignKey, model.id)
+                        pending.push obj.save(options)
+                    Promise.all pending
+            catch e
+                Rejected e
+
     _createRelation: (cls) ->
         related = @relatedModel
         foreignKey = @options.foreignKey
@@ -151,7 +181,7 @@ class BelongsTo extends Relation
     @helperMethods:
         assign: (model, relation, obj, options) ->
             options = pluck options, 'transacting'
-            foreignKey = @relatedData.key('foreignKey')
+            foreignKey = @relatedData.key 'foreignKey'
 
             related = if obj is null
                 Fulfilled {id: null}
@@ -160,7 +190,7 @@ class BelongsTo extends Relation
             else
                 Fulfilled obj
 
-            related.then (related) => model.save(foreignKey, related.id, options)
+            related.then (related) -> model.save(foreignKey, related.id, options)
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -179,7 +209,7 @@ class HasMany extends Relation
             return unless list?
             list = [list] unless list instanceof Array
             options = pluck options, 'transacting'
-            foreignKey = @relatedData.key('foreignKey')
+            foreignKey = @relatedData.key 'foreignKey'
 
             @model.query().where(foreignKey, '=', model.id).pluck('id')
             .then (currentIds) =>
