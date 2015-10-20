@@ -64,9 +64,19 @@ profiles = co ->
         table.string 'greetings', 255
         table.integer 'user_id'
 
+tags = co ->
+    init() unless db
+    knex = db.knex
+    yield knex.schema.dropTableIfExists('tags')
+    yield knex.schema.createTable 'tags', (table) ->
+        table.increments('id').primary()
+        table.string 'tag', 255
+        table.integer 'tagable_id'
+        table.string 'tagable_type', 255
+
 module.exports =
     init: init
     users: users
     photos: photos
     profiles: profiles
-
+    tags: tags

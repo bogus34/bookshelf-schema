@@ -326,13 +326,14 @@ class BelongsToMany extends Relation
         -> @belongsToMany related, table, foreignKey, otherKey
 
 class MorphOne extends Relation
-    constructor: (model, options = {}) ->
+    constructor: (model, polymorphicName, options = {}) ->
         return new MorphOne(arguments...) unless this instanceof MorphOne
         super
+        @polymorphicName = polymorphicName
 
     _createRelation: (cls) ->
         related = @relatedModel
-        name = @options.name
+        name = @polymorphicName
         columnNames = @options.columnNames
         morphValue = @options.morphValue
         -> @morphOne related, name, columnNames, morphValue
