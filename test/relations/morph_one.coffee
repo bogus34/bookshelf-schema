@@ -40,7 +40,7 @@ describe "Relations", ->
                 MorphOne Tag, 'tagable'
             ]
 
-        it.only 'creates accessor', co ->
+        it 'creates accessor', co ->
             [alice, tag] = yield fixtures.alice()
             alice.tag.should.be.a 'function'
             yield alice.load 'tag'
