@@ -4,7 +4,7 @@ init = require '../init'
 Fields = require '../../src/fields'
 Relations = require '../../src/relations'
 
-{StringField, IntField, EmailField} = Fields
+{StringField} = Fields
 {HasMany, BelongsTo} = Relations
 
 describe "Relations", ->
@@ -49,7 +49,7 @@ describe "Relations", ->
         it 'creates accessor', co ->
             [alice, _] = yield fixtures.alice()
             alice.photos.should.be.a 'function'
-            yield alice.load('photos')
+            yield alice.load 'photos'
             alice.$photos.should.be.an.instanceof db.Collection
             alice.$photos.at(0).user_id.should.be.equal alice.id
 
