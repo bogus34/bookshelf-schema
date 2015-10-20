@@ -97,18 +97,25 @@ class Relation
 
     createGetter: ->
         self = this
-        -> @related(self.name)
+        ->
+            related = @related(self.name)
+            unless related.__augemented
+                self._augementRelated this, related
+            related
 
     createSetter: ->
 
     _augementRelated: (parent, related) ->
         return related unless @constructor.helperMethods
         self = this
-        for name, method of @constructor.helperMethods when name not of related
+        for name, method of @constructor.helperMethods
             do (method) ->
+                if name of related
+                    related["_original#{name[0].toUpperCase()}#{name[1..]}"] = related[name]
                 related[name] = (args...) ->
                     args = [parent, self].concat args
                     method.apply this, args
+        related.__augemented = true
         related
 
     _createProperty: (cls) ->
@@ -270,8 +277,7 @@ class HasMany extends Relation
                         when obj instanceof @model
                             models.push obj
                         else
-                            throw new Error("Can't attach #{obj} to #{model} as a
-                            #{relation.name}")
+                            throw new Error("Can't attach #{obj} to #{model} as a #{relation.name}")
 
                 loadUnloaded = if unloaded.length is 0
                     Fulfilled @model.collection()
@@ -327,6 +333,32 @@ class BelongsToMany extends Relation
     constructor: (model, options = {}) ->
         return new BelongsToMany(arguments...) unless this instanceof BelongsToMany
         super
+
+    @helperMethods:
+        assign: HasMany.helperMethods.assign
+
+        attach: (model, relation, list, options) ->
+            try
+                unsaved = []
+                other = []
+                for obj in list
+                    switch
+                        when typeof obj is 'number'
+                            other.push obj
+                        when obj instanceof @model and obj.id?
+                            other.push obj
+                        when obj instanceof @model
+                            unsaved.push obj
+                        when obj.constructor is Object
+                            unsaved.push @model.forge(obj)
+                        else
+                            throw new Error("Can't attach #{obj} to #{model} as a #{relation.name}")
+
+                unsaved = unsaved.map( (obj) -> obj.save() )
+                Promise.all(unsaved).then (saved) =>
+                    @_originalAttach saved.concat(other)
+            catch e
+                Rejected e
 
     _createRelation: (cls) ->
         related = @relatedModel

@@ -35,7 +35,7 @@ init = ->
 users = co ->
     init() unless db
     knex = db.knex
-    yield knex.schema.dropTableIfExists('users')
+    yield knex.schema.dropTableIfExists 'users'
     yield knex.schema.createTable 'users', (table) ->
         table.increments('id').primary()
         table.string 'username', 255
@@ -49,7 +49,7 @@ users = co ->
 photos = co ->
     init() unless db
     knex = db.knex
-    yield knex.schema.dropTableIfExists('photos')
+    yield knex.schema.dropTableIfExists 'photos'
     yield knex.schema.createTable 'photos', (table) ->
         table.increments('id').primary()
         table.string 'filename', 255
@@ -58,16 +58,30 @@ photos = co ->
 profiles = co ->
     init() unless db
     knex = db.knex
-    yield knex.schema.dropTableIfExists('profiles')
+    yield knex.schema.dropTableIfExists 'profiles'
     yield knex.schema.createTable 'profiles', (table) ->
         table.increments('id').primary()
         table.string 'greetings', 255
         table.integer 'user_id'
 
+groups = co ->
+    init() unless db
+    knex = db.knex
+    yield [
+        knex.schema.dropTableIfExists 'groups'
+        knex.schema.dropTableIfExists 'groups_users'
+    ]
+    yield knex.schema.createTable 'groups', (table) ->
+        table.increments('id').primary()
+        table.string 'name', 255
+    yield knex.schema.createTable 'groups_users', (table) ->
+        table.integer 'user_id'
+        table.integer 'group_id'
+
 tags = co ->
     init() unless db
     knex = db.knex
-    yield knex.schema.dropTableIfExists('tags')
+    yield knex.schema.dropTableIfExists 'tags'
     yield knex.schema.createTable 'tags', (table) ->
         table.increments('id').primary()
         table.string 'tag', 255
@@ -79,4 +93,5 @@ module.exports =
     users: users
     photos: photos
     profiles: profiles
+    groups: groups
     tags: tags
