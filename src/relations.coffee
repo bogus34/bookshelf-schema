@@ -211,76 +211,96 @@ class HasMany extends Relation
             options = pluck options, 'transacting'
             foreignKey = @relatedData.key 'foreignKey'
 
-            @model.query().where(foreignKey, '=', model.id).pluck('id')
-            .then (currentIds) =>
-                listIds = for obj in list
-                    if typeof obj is 'number'
-                        obj
-                    else if obj instanceof @model and obj.id?
-                        obj.id
-                    else
+            currentObjs = model[relation.name]().fetch()
+            attachObjs  = Promise.all list.map (obj) =>
+                switch
+                    when typeof obj is 'number'
+                        @model.forge(id: obj).fetch()
+                    when obj.constructor is Object
+                        Fulfilled @model.forge(obj)
+                    when obj instanceof @model
+                        Fulfilled obj
+
+            Promise.all([currentObjs, attachObjs]).then ([currentObjs, attachObjs]) =>
+                currentObjs = currentObjs.models
+
+                idx = currentObjs.reduce (memo, obj) ->
+                    memo[obj.id] = obj
+                    memo
+                , {}
+
+                attachObj = for obj in attachObjs
+                    continue unless obj.id
+                    if idx[obj.id]
+                        delete idx[obj.id]
                         continue
-
-                [detachIds, attachObjs] = switch
-                    when currentIds.length is 0 or listIds.length is 0
-                        [currentIds, list]
                     else
-                        a = []
-                        b = list[..]
-                        for id in currentIds
-                            pos = listIds.indexOf(id)
-                            if pos is -1
-                                a.push id
-                            else
-                                b.splice pos, 1
-                        [a, b]
+                        obj
 
-                @detach(detachIds, options)
+                detachObjs = (obj for k, obj of idx)
+
+                @detach(detachObjs, options)
                 .then => @attach(attachObjs, options)
 
-        # TODO: can be optimized by batch-loading of models by id and batch-creating new models
         attach: (model, relation, list, options) ->
             return unless list?
             list = [list] unless list instanceof Array
             options = pluck options, 'transacting'
             foreignKey = @relatedData.key('foreignKey')
             try
-                pending = for obj in list
+                unloaded = []
+                created = []
+                models = []
+                for obj in list
                     switch
                         when typeof obj is 'number'
-                            @model.forge(id: obj).fetch(options)
+                            unloaded.push obj
                         when obj.constructor is Object
-                            Fulfilled @model.forge(obj)
+                            created.push @model.forge(obj)
                         when obj instanceof @model
-                            Fulfilled obj
+                            models.push obj
                         else
-                            throw new Error("Can't attach #{obj} to #{model} as a #{relation.name}")
+                            throw new Error("Can't attach #{obj} to #{model} as a
+                            #{relation.name}")
 
-                Promise.all(pending).then (list) ->
-                    Promise.all( for obj in list
+                loadUnloaded = if unloaded.length is 0
+                    Fulfilled @model.collection()
+                else
+                    @model.collection().where(@model.idAttribute, 'in', unloaded).fetch()
+
+                loadUnloaded.then (unloaded) ->
+                    unloaded = unloaded.models
+                    Promise.all( for obj in unloaded.concat(created, models)
                         obj.set(foreignKey, model.id).save(options)
                     )
             catch e
                 Rejected e
 
-        # TODO: can be optimized by batch-loading models by id
         detach: (model, relation, list, options) ->
             return unless list?
             list = [list] unless list instanceof Array
             options = pluck options, 'transacting'
             foreignKey = @relatedData.key('foreignKey')
             try
-                pending = for obj in list
+                unloaded = []
+                models = []
+                for obj in list
                     switch
                         when typeof obj is 'number'
-                            @model.forge(id: obj).fetch(options)
+                            unloaded.push obj
                         when obj instanceof @model
-                            Fulfilled obj
+                            models.push obj
                         else
                             throw new Error("Can't detach #{obj} from #{model} #{relation.name}")
 
-                Promise.all(pending).then (list) ->
-                    Promise.all( for obj in list
+                loadUnloaded = if unloaded.length is 0
+                    Fulfilled @model.collection()
+                else
+                    @model.collection().where(@model.idAttribute, 'in', unloaded).fetch()
+
+                loadUnloaded.then (unloaded) ->
+                    unloaded = unloaded.models
+                    Promise.all( for obj in unloaded.concat(models)
                         obj.set(foreignKey, null).save(options)
                     )
             catch e
