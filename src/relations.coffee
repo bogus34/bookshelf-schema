@@ -66,6 +66,37 @@ pluck = (obj, fields...) ->
         result[f] = obj[f]
     result
 
+notNull = (a) -> a?
+
+cast =
+    forgeOrFetch: (self, obj, msg) ->
+        model = self.model or self.constructor
+        switch
+            when obj is null
+                Fulfilled null
+            when typeof obj is 'number'
+                model.forge(id: obj).fetch()
+            when obj.constructor is Object
+                Fulfilled model.forge(obj)
+            when obj instanceof model
+                Fulfilled obj
+            else
+                throw new Error msg
+
+    saveOrFetch: (self, obj, options, msg) ->
+        model = self.model or self.constructor
+        switch
+            when obj is null
+                Fulfilled {id: null}
+            when typeof obj is 'number'
+                model.forge(id: obj).fetch(options)
+            when obj.constructor is Object
+                model.forge(obj).save(options)
+            when obj instanceof model
+                Fulfilled obj
+            else
+                throw new Error msg
+
 class Relation
     @multiple: false
 
@@ -147,18 +178,7 @@ class HasOne extends Relation
             foreignKey = @relatedData.key 'foreignKey'
 
             try
-                obj = switch
-                    when obj is null
-                        Fulfilled null
-                    when obj instanceof this.constructor
-                        Fulfilled obj
-                    when obj.constructor is Object
-                        Fulfilled @constructor.forge(obj, options)
-                    when typeof obj is 'number'
-                        @constructor.forge(id: obj).fetch()
-                    else
-                        throw new Error("Can't assign #{obj} to #{model} as a #{relation.name}")
-
+                obj = cast.forgeOrFetch this, obj, "Can't assign #{obj} to #{model} as a #{relation.name}"
                 old = model[relation.name]().fetch()
 
                 Promise.all([old, obj]).then ([old, obj]) ->
@@ -193,18 +213,7 @@ class BelongsTo extends Relation
             foreignKey = @relatedData.key 'foreignKey'
 
             try
-                related = switch
-                    when obj is null
-                        Fulfilled {id: null}
-                    when typeof obj is 'number'
-                        @constructor.forge(id: obj).fetch(options)
-                    when obj.constructor is Object
-                        @constructor.forge(obj).save(options)
-                    when obj instanceof @constructor
-                        Fulfilled obj
-                    else
-                        throw new Error("Can't assign #{obj} to #{model} as a #{relation.name}")
-
+                related = cast.saveOrFetch this, obj, options, "Can't assign #{obj} to #{model} as a #{relation.name}"
                 related.then (related) -> model.save(foreignKey, related.id, options)
             catch e
                 Rejected e
@@ -229,14 +238,10 @@ class HasMany extends Relation
             foreignKey = @relatedData.key 'foreignKey'
 
             currentObjs = model[relation.name]().fetch()
-            attachObjs  = Promise.all list.map (obj) =>
-                switch
-                    when typeof obj is 'number'
-                        @model.forge(id: obj).fetch()
-                    when obj.constructor is Object
-                        Fulfilled @model.forge(obj)
-                    when obj instanceof @model
-                        Fulfilled obj
+            attachObjs  = Promise.all \
+                list.map( (obj) =>
+                    cast.forgeOrFetch this, obj, "Can't assign #{obj} to #{model} as a #{relation.name}"
+                ).filter(notNull)
 
             Promise.all([currentObjs, attachObjs]).then ([currentObjs, attachObjs]) =>
                 currentObjs = currentObjs.models
@@ -370,8 +375,35 @@ class BelongsToMany extends Relation
 class MorphOne extends Relation
     constructor: (model, polymorphicName, options = {}) ->
         return new MorphOne(arguments...) unless this instanceof MorphOne
-        super
+        super model, options
         @polymorphicName = polymorphicName
+
+    @helperMethods:
+        assign: (model, relation, obj, options) ->
+            options = pluck options, 'transacting'
+            foreignKey = @relatedData.key 'foreignKey'
+            morphKey = @relatedData.key 'morphKey'
+            morphValue = @relatedData.key 'morphValue'
+
+            try
+                obj = cast.forgeOrFetch this, obj, "Can't assign #{obj} to #{model} as a #{relation.name}"
+                old = model[relation.name]().fetch()
+
+                Promise.all([old, obj]).then ([old, obj]) ->
+                    pending = []
+                    if old.id?
+                        old = old.clone() # force knex not to use relatedData
+                        old.set foreignKey, null
+                        old.set morphKey, null
+                        pending.push old.save()
+                    if obj?
+                        obj.set foreignKey, model.id
+                        obj.set morphKey, morphValue
+                        pending.push obj.save(options)
+                    Promise.all pending
+            catch e
+                Rejected e
+
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -383,24 +415,31 @@ class MorphOne extends Relation
 class MorphMany extends Relation
     @multiple: true
 
-    constructor: (model, options = {}) ->
+    constructor: (model, polymorphicName, options = {}) ->
         return new MorphMany(arguments...) unless this instanceof MorphMany
-        super
+        super model, options
+        @polymorphicName = polymorphicName
 
     _createRelation: (cls) ->
         related = @relatedModel
-        name = @options.name
+        name = @polymorphicName
         columnNames = @options.columnNames
         morphValue = @options.morphValue
         -> @morphMany related, name, columnNames, morphValue
 
 class MorphTo extends Relation
-    constructor: (model, options = {}) ->
+    constructor: (polymorphicName, targets, options = {}) ->
         return new MorphTo(arguments...) unless this instanceof MorphTo
-        super
+        options.name = polymorphicName
+        super targets, options
+        @polymorphicName = options.polymorphicName
 
     _createRelation: (cls) ->
-        throw new Error("Not implemented")
+        targets = @relatedModel
+        name = @polymorphicName
+        columnNames = @options.columnNames
+        args = [name, columnNames].concat targets
+        -> @morphTo args...
 
 module.exports =
     HasOne: HasOne
@@ -409,4 +448,3 @@ module.exports =
     BelongsToMany: BelongsToMany
     MorphOne: MorphOne
     MorphTo: MorphTo
-

@@ -84,7 +84,7 @@ tags = co ->
     yield knex.schema.dropTableIfExists 'tags'
     yield knex.schema.createTable 'tags', (table) ->
         table.increments('id').primary()
-        table.string 'tag', 255
+        table.string 'name', 255
         table.integer 'tagable_id'
         table.string 'tagable_type', 255
 
