@@ -432,13 +432,25 @@ class MorphTo extends Relation
         return new MorphTo(arguments...) unless this instanceof MorphTo
         options.name = polymorphicName
         super targets, options
-        @polymorphicName = options.polymorphicName
+        @polymorphicName = polymorphicName
+
+    @helperMethods:
+        assign: (model, relation, obj, morphValue, options) ->
+            unless typeof morphValue is 'string'
+                options = morphValue
+                morphValue = obj.tableName
+            options = pluck options, 'transacting'
+            foreignKey = @relatedData.key 'foreignKey'
+            morphKey = @relatedData.key 'morphKey'
+
+            model.set foreignKey, obj.id
+            model.set morphKey, morphValue
+            model.save(options)
 
     _createRelation: (cls) ->
-        targets = @relatedModel
-        name = @polymorphicName
-        columnNames = @options.columnNames
-        args = [name, columnNames].concat targets
+        args = [@polymorphicName]
+        args.push @options.columnNames if @options.columnNames
+        args = args.concat @relatedModel
         -> @morphTo args...
 
 module.exports =
