@@ -232,43 +232,43 @@ class HasMany extends Relation
 
     @helperMethods:
         assign: (model, relation, list, options) ->
-            return unless list?
+            list ?= []
             list = [list] unless list instanceof Array
             options = pluck options, 'transacting'
-            foreignKey = @relatedData.key 'foreignKey'
 
-            currentObjs = model[relation.name]().fetch()
-            attachObjs  = Promise.all \
-                list.map( (obj) =>
-                    cast.forgeOrFetch this, obj, "Can't assign #{obj} to #{model} as a #{relation.name}"
-                ).filter(notNull)
+            try
+                currentObjs = model[relation.name]().fetch()
+                attachObjs  = Promise.all \
+                    list.map( (obj) =>
+                        cast.forgeOrFetch this, obj, "Can't assign #{obj} to #{model} as a #{relation.name}"
+                    ).filter(notNull)
 
-            Promise.all([currentObjs, attachObjs]).then ([currentObjs, attachObjs]) =>
-                currentObjs = currentObjs.models
+                Promise.all([currentObjs, attachObjs]).then ([currentObjs, attachObjs]) =>
+                    currentObjs = currentObjs.models
 
-                idx = currentObjs.reduce (memo, obj) ->
-                    memo[obj.id] = obj
-                    memo
-                , {}
+                    idx = currentObjs.reduce (memo, obj) ->
+                        memo[obj.id] = obj
+                        memo
+                    , {}
 
-                attachObj = for obj in attachObjs
-                    continue unless obj.id
-                    if idx[obj.id]
-                        delete idx[obj.id]
-                        continue
-                    else
-                        obj
+                    attachObj = for obj in attachObjs
+                        continue unless obj.id
+                        if idx[obj.id]
+                            delete idx[obj.id]
+                            continue
+                        else
+                            obj
 
-                detachObjs = (obj for k, obj of idx)
+                    detachObjs = (obj for k, obj of idx)
 
-                @detach(detachObjs, options)
-                .then => @attach(attachObjs, options)
+                    @detach(detachObjs, options).then => @attach(attachObjs, options)
+            catch e
+                Rejected e
 
         attach: (model, relation, list, options) ->
             return unless list?
             list = [list] unless list instanceof Array
             options = pluck options, 'transacting'
-            foreignKey = @relatedData.key('foreignKey')
             try
                 unloaded = []
                 created = []
@@ -289,19 +289,21 @@ class HasMany extends Relation
                 else
                     @model.collection().where(@model.idAttribute, 'in', unloaded).fetch()
 
-                loadUnloaded.then (unloaded) ->
+                loadUnloaded.then (unloaded) =>
                     unloaded = unloaded.models
-                    Promise.all( for obj in unloaded.concat(created, models)
-                        obj.set(foreignKey, model.id).save(options)
-                    )
+                    pending = for obj in unloaded.concat(created, models)
+                        @_attachOne obj, options
+                    Promise.all pending
             catch e
                 Rejected e
+
+        _attachOne: (model, relation, obj, options) ->
+            obj.set(@relatedData.key('foreignKey'), model.id).save(options)
 
         detach: (model, relation, list, options) ->
             return unless list?
             list = [list] unless list instanceof Array
             options = pluck options, 'transacting'
-            foreignKey = @relatedData.key('foreignKey')
             try
                 unloaded = []
                 models = []
@@ -319,13 +321,16 @@ class HasMany extends Relation
                 else
                     @model.collection().where(@model.idAttribute, 'in', unloaded).fetch()
 
-                loadUnloaded.then (unloaded) ->
+                loadUnloaded.then (unloaded) =>
                     unloaded = unloaded.models
-                    Promise.all( for obj in unloaded.concat(models)
-                        obj.set(foreignKey, null).save(options)
-                    )
+                    pending = for obj in unloaded.concat(models)
+                        @_detachOne obj, options
+                    Promise.all pending
             catch e
                 Rejected e
+
+        _detachOne: (model, relation, obj, options) ->
+            obj.set(@relatedData.key('foreignKey'), null).save(options)
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -420,6 +425,19 @@ class MorphMany extends Relation
         super model, options
         @polymorphicName = polymorphicName
 
+    @helperMethods:
+        assign: HasMany.helperMethods.assign
+        attach: HasMany.helperMethods.attach
+        _attachOne: (model, relation, obj, options) ->
+            obj.set @relatedData.key('foreignKey'), model.id
+            obj.set @relatedData.key('morphKey'), @relatedData.key('morphValue')
+            obj.save options
+        detach: HasMany.helperMethods.detach
+        _detachOne: (model, relation, obj, options) ->
+            obj.set @relatedData.key('foreignKey'), null
+            obj.set @relatedData.key('morphKey'), null
+            obj.save options
+
     _createRelation: (cls) ->
         related = @relatedModel
         name = @polymorphicName
@@ -459,4 +477,5 @@ module.exports =
     HasMany: HasMany
     BelongsToMany: BelongsToMany
     MorphOne: MorphOne
+    MorphMany: MorphMany
     MorphTo: MorphTo
