@@ -12,6 +12,7 @@ describe "Relations", ->
     db = null
     User = null
     Photo = null
+    Inviter = null
 
     fixtures =
         alice: co ->
@@ -21,6 +22,19 @@ describe "Relations", ->
                 new Photo(filename: 'photo2.jpg', user_id: alice.id).save()
             ]
             [alice, photos]
+        aliceBobAndCharley: co ->
+            [alice, bob, charley] = yield [
+                 new User(username: 'alice').save()
+                 new User(username: 'bob').save()
+                 new User(username: 'charley').save()
+            ]
+            [inviter1, inviter2] = yield [
+                 new Inviter(greeting: 'Hello Bob!', user_id: alice.id).save()
+                 yield new Inviter(greeting: 'Hi Charley!', user_id: alice.id).save()
+            ]
+            yield [ bob.save(inviter_id: inviter1.id), charley.save(inviter_id: inviter2.id) ]
+
+            [alice, bob, charley]
 
     before co ->
         db = init.init()
@@ -86,4 +100,31 @@ describe "Relations", ->
             yield Photo.where('user_id', '=', alice.id).count().then(parseInt).should.become 2
             yield alice.$photos.assign []
             Photo.where('user_id', '=', alice.id).count().then(parseInt).should.become 0
+
+    describe 'through', ->
+        before -> init.inviters()
+
+        beforeEach ->
+            class Inviter extends db.Model
+                tableName: 'inviters'
+
+            class User extends db.Model
+                tableName: 'users'
+
+                @schema [
+                    StringField 'username'
+                    HasMany User, name: 'invited', through: Inviter
+                ]
+
+            Inviter.schema [
+                StringField 'greeting'
+            ]
+
+        afterEach -> init.truncate 'users', 'inviters'
+
+        it 'can access related model', co ->
+            [alice, bob, charley] = yield fixtures.aliceBobAndCharley()
+            yield alice.load('invited')
+            alice.$invited.should.be.an.instanceof db.Collection
+            alice.$invited.pluck('username').sort().should.deep.equal ['bob', 'charley']
 
