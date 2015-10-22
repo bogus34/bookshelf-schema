@@ -47,6 +47,7 @@ users = co ->
         table.dateTime 'last_login'
         table.date 'birth_date'
         table.json 'additional_data'
+        table.integer 'invited'
 
 photos = co ->
     init() unless db
@@ -90,6 +91,15 @@ tags = co ->
         table.integer 'tagable_id'
         table.string 'tagable_type', 255
 
+inviters = co ->
+    init() unless db
+    knex = db.knex
+    yield knex.schema.dropTableIfExists 'inviters'
+    yield knex.schema.createTable 'inviters', (table) ->
+        table.increments('id').primary()
+        table.string 'greeting'
+        table.integer 'user_id'
+
 module.exports =
     init: init
     truncate: truncate
@@ -98,3 +108,4 @@ module.exports =
     profiles: profiles
     groups: groups
     tags: tags
+    inviters: inviters

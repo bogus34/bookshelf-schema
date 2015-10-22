@@ -112,19 +112,31 @@ class Relation
         @model = cls
         @accessor = @options.accessor || @_deduceAccessorName(@name)
         cls::[@name] = @createRelation(cls) unless @name of cls.prototype
-        if (@options.createProperty or !@options.createProperty?) and @pluginOption('createProperties')
+        if (@options.createProperty or !@options.createProperty?)\
+        and @pluginOption('createProperties')
             @_createProperty(cls)
 
     createRelation: (cls) ->
-        relation = if @options.query
-            builder = @_createRelation(cls)
-            query = @options.query
-            -> query.apply builder.call(this)
-        else
-            @_createRelation(cls)
+        relation = @_createRelation(cls)
+        relation = @_applyQuery(relation)
+        relation = @_applyThrough(relation)
 
         self = this
         -> self._augementRelated this, relation.apply(this, arguments)
+
+    # TODO: apply withPivot
+    # TODO: auto-discover withPivot columns from through models schema
+    _applyThrough: (builder) ->
+        return builder unless @options.through
+        interim = @options.through
+        throughForeignKey = @options.throughForeignKey
+        otherKey = @options.otherKey
+        -> builder.call(this).through(interim, throughForeignKey, otherKey)
+
+    _applyQuery: (builder) ->
+        return builder unless @options.query
+        query = @options.query
+        -> query.apply builder.call(this)
 
     createGetter: ->
         self = this
@@ -173,7 +185,10 @@ class HasOne extends Relation
         super
 
     @helperMethods:
+        # TODO: allow assignment with interim model
         assign: (model, relation, obj, options) ->
+            if relation.options.through
+                return Rejected new Error "Can't assign relation with interim model"
             options = pluck options, 'transacting'
             foreignKey = @relatedData.key 'foreignKey'
 
@@ -208,7 +223,10 @@ class BelongsTo extends Relation
         schema.push IntField "#{@name}_id"
 
     @helperMethods:
+        # TODO: allow assignment with interim model
         assign: (model, relation, obj, options) ->
+            if relation.options.through
+                return Rejected new Error "Can't assign relation with interim model"
             options = pluck options, 'transacting'
             foreignKey = @relatedData.key 'foreignKey'
 
@@ -231,7 +249,10 @@ class HasMany extends Relation
         super
 
     @helperMethods:
+        # TODO: allow assignment with interim model
         assign: (model, relation, list, options) ->
+            if relation.options.through
+                return Rejected new Error "Can't assign relation with interim model"
             list ?= []
             list = [list] unless list instanceof Array
             options = pluck options, 'transacting'

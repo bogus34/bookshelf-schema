@@ -12,12 +12,21 @@ describe "Relations", ->
     db = null
     User = null
     Profile = null
+    Inviter = null
 
     fixtures =
         alice: co ->
             alice = yield new User(username: 'alice').save()
             profile = yield new Profile(greetings: 'Hola!', user_id: alice.id).save()
             [alice, profile]
+        aliceAndBob: co ->
+            [alice, bob] = yield [
+                 new User(username: 'alice').save()
+                 new User(username: 'bob').save()
+            ]
+            inviter = yield new Inviter(greeting: 'Hello Bob!', user_id: bob.id).save()
+            yield alice.save(invited: inviter.id)
+            [alice, bob, inviter]
 
     before co ->
         db = init.init()
@@ -83,3 +92,31 @@ describe "Relations", ->
 
             expect(profile.user_id).to.be.null
             alice.$profile.id.should.equal profile2.id
+
+    describe 'through', ->
+        before -> init.inviters()
+
+        beforeEach ->
+            class Inviter extends db.Model
+                tableName: 'inviters'
+
+            class User extends db.Model
+                tableName: 'users'
+
+                @schema [
+                    StringField 'username'
+                    HasOne User, name: 'inviter', through: Inviter, throughForeignKey: 'invited'
+                ]
+
+            Inviter.schema [
+                StringField 'greeting'
+            ]
+
+        afterEach -> init.truncate 'users', 'inviters'
+
+        it 'can access related model', co ->
+            [alice, bob, inviter] = yield fixtures.aliceAndBob()
+            yield bob.load('inviter')
+            bob.$inviter.should.be.an.instanceof User
+            bob.$inviter.id.should.equal alice.id
+
