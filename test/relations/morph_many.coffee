@@ -87,3 +87,10 @@ describe "Relations", ->
             yield alice.$tags.assign []
             Tag.where(tagable_id: alice.id, tagable_type: 'users').count().then(parseInt).should.become 0
 
+        it 'fixes count method', co ->
+            [alice, tags] = yield fixtures.alice()
+            boy = yield new Tag(name: 'boy').save()
+            yield [
+                alice.$tags.count().should.become 2
+                alice.$tags._originalCount().should.not.become 2
+            ]

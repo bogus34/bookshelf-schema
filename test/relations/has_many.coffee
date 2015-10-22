@@ -59,7 +59,7 @@ describe "Relations", ->
 
         afterEach -> init.truncate 'users', 'photos'
 
-        it 'creates accessor', co ->
+        it 'create accessor', co ->
             [alice, _] = yield fixtures.alice()
             alice.photos.should.be.a 'function'
             yield alice.load 'photos'
@@ -99,6 +99,14 @@ describe "Relations", ->
             yield Photo.where('user_id', '=', alice.id).count().then(parseInt).should.become 2
             yield alice.$photos.assign []
             Photo.where('user_id', '=', alice.id).count().then(parseInt).should.become 0
+
+        it 'fixes count method', co ->
+            [alice, photos] = yield fixtures.alice()
+            otherPhoto = yield new Photo(filename: 'photo3.jpg').save()
+            yield [
+                alice.$photos.count().should.become photos.length
+                alice.$photos._originalCount().should.not.become photos.length
+            ]
 
     describe 'through', ->
         before -> init.inviters()

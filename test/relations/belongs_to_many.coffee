@@ -92,3 +92,13 @@ describe "Relations", ->
             alice = yield User.forge(id: alice.id).fetch(withRelated: 'groups')
             alice.$groups.length.should.equal 0
 
+        it 'fixes count method', co ->
+            [alice, groups] = yield [
+                fixtures.alice()
+                fixtures.groups('users', 'music', 'games')
+            ]
+            yield fixtures.connect alice, groups[..1]
+            yield [
+                alice.$groups.count().should.become 2
+                alice.$groups._originalCount().should.not.become 2
+            ]

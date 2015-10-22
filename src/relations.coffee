@@ -59,6 +59,10 @@ pluck = (obj, fields...) ->
         result[f] = obj[f]
     result
 
+upperFirst = (str) -> str[0].toUpperCase() + str[1..]
+
+values = (obj) -> v for k, v of obj
+
 notNull = (a) -> a?
 
 cast =
@@ -90,6 +94,20 @@ cast =
             else
                 throw new Error msg
 
+# Originally posted by @nathggns at https://github.com/tgriesser/bookshelf/issues/126
+fixedCount = (object) ->
+    sync = object.sync()
+
+    relatedData = sync.syncing.relatedData
+    if relatedData.isJoined()
+        relatedData.joinClauses sync.query
+    relatedData.whereClauses sync.query
+
+    sync.query.count('*')
+    .then (result) ->
+        throw new Error('Empty response') if !result
+        Number values(result[0])[0]
+
 class Relation
     @multiple: false
 
@@ -97,7 +115,7 @@ class Relation
         return new Relation(arguments...) unless this instanceof Relation
         @relatedModel = model
         @options = options
-        @name = @options.name || @_deduceName(@relatedModel)
+        @name = @_deduceName(@relatedModel)
 
     pluginOption: (name, defaultVal) -> @model.__bookshelf_schema_options[name] or defaultVal
     option: (name, pluginOptionName, defaultVal) ->
@@ -153,7 +171,7 @@ class Relation
         for name, method of @constructor.helperMethods
             do (method) ->
                 if name of related
-                    related["_original#{name[0].toUpperCase()}#{name[1..]}"] = related[name]
+                    related["_original#{upperFirst(name)}"] = related[name]
                 related[name] = (args...) ->
                     args = [parent, self].concat args
                     method.apply this, args
@@ -171,6 +189,7 @@ class Relation
         Object.defineProperty cls.prototype, @accessor, spec
 
     _deduceName: ->
+        return @options.name if @options.name?
         if @constructor.multiple
             pluralize @relatedModel.name.toLowerCase()
         else
@@ -280,6 +299,8 @@ class HasMany extends Relation
         super
 
     @helperMethods:
+        count: (model, relation) -> fixedCount this
+
         # TODO: allow assignment with interim model
         assign: (model, relation, list, options) ->
             if relation.options.through
@@ -397,6 +418,7 @@ class BelongsToMany extends Relation
         super
 
     @helperMethods:
+        count: HasMany.helperMethods.count
         assign: HasMany.helperMethods.assign
 
         attach: (model, relation, list, options) ->
@@ -478,6 +500,7 @@ class MorphMany extends Relation
         @polymorphicName = polymorphicName
 
     @helperMethods:
+        count: HasMany.helperMethods.count
         assign: HasMany.helperMethods.assign
         attach: HasMany.helperMethods.attach
         _attachOne: (model, relation, obj, options) ->
