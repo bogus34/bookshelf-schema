@@ -43,8 +43,7 @@ describe "Relations", ->
                 BelongsTo User
             ]
 
-        afterEach co ->
-            yield [ db.knex('users').truncate(), db.knex('photos').truncate() ]
+        afterEach -> init.truncate 'users', 'photos'
 
         it 'creates accessor', co ->
             [alice, [photo1, _]] = yield fixtures.alice()

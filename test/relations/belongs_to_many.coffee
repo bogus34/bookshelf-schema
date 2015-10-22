@@ -44,8 +44,7 @@ describe "Relations", ->
                 BelongsToMany User
             ]
 
-        afterEach co ->
-            yield (db.knex(table).truncate() for table in ['users', 'groups', 'groups_users'])
+        afterEach -> init.truncate 'users', 'groups', 'groups_users'
 
         it 'creates accessor', co ->
             [alice, groups] = yield [ fixtures.alice(), fixtures.groups('users') ]

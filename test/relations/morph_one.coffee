@@ -40,6 +40,8 @@ describe "Relations", ->
                 MorphOne Tag, 'tagable'
             ]
 
+        afterEach -> init.truncate 'users', 'tags'
+
         it 'creates accessor', co ->
             [alice, tag] = yield fixtures.alice()
             alice.tag.should.be.a 'function'

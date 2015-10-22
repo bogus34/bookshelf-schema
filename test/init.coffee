@@ -32,6 +32,8 @@ init = ->
     db.plugin Schema()
     db
 
+truncate = co (tables...) -> yield (db.knex(table).truncate() for table in tables)
+
 users = co ->
     init() unless db
     knex = db.knex
@@ -90,6 +92,7 @@ tags = co ->
 
 module.exports =
     init: init
+    truncate: truncate
     users: users
     photos: photos
     profiles: profiles

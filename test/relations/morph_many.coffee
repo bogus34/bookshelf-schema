@@ -43,8 +43,7 @@ describe "Relations", ->
                 MorphTo 'tagable', [User]
             ]
 
-        afterEach co ->
-            yield [ db.knex('users').truncate(), db.knex('tags').truncate() ]
+        afterEach -> init.truncate 'users', 'tags'
 
         it 'creates accessor', co ->
             [alice, _] = yield fixtures.alice()

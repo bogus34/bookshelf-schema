@@ -41,8 +41,7 @@ describe "Relations", ->
                     HasOne Profile
                 ]
 
-        afterEach co ->
-            yield [ db.knex('users').truncate(), db.knex('profiles').truncate() ]
+        afterEach -> init.truncate 'users', 'profiles'
 
         it 'creates accessor', co ->
             [alice, _] = yield fixtures.alice()
