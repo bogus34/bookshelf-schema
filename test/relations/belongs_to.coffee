@@ -12,6 +12,7 @@ describe "Relations", ->
     db = null
     User = null
     Photo = null
+    Inviter = null
 
     fixtures =
         alice: co ->
@@ -21,6 +22,14 @@ describe "Relations", ->
                 new Photo(filename: 'photo2.jpg', user_id: alice.id).save()
             ]
             [alice, photos]
+        aliceAndBob: co ->
+            [alice, bob] = yield [
+                 new User(username: 'alice').save()
+                 new User(username: 'bob').save()
+            ]
+            inviter = yield new Inviter(greeting: 'Hello Bob!', user_id: bob.id).save()
+            yield alice.save(invited: inviter.id)
+            [alice, bob, inviter]
 
     before co ->
         db = init.init()
@@ -83,3 +92,33 @@ describe "Relations", ->
             yield photo1.$user.assign(null)
             photo1 = yield Photo.forge(id: photo1.id).fetch()
             expect(photo1.user_id).to.be.null
+
+    # XXX doesn't work with self-join
+    describe.skip 'through', ->
+        before -> init.inviters()
+
+        beforeEach ->
+            class Inviter extends db.Model
+                tableName: 'inviters'
+
+            class User extends db.Model
+                tableName: 'users'
+
+                @schema [
+                    StringField 'username'
+                    BelongsTo User, name: 'invited', through: Inviter, throughForeignKey: 'invited'
+                ]
+
+            Inviter.schema [
+                StringField 'greeting'
+            ]
+
+        afterEach -> init.truncate 'users', 'inviters'
+
+        it 'blah can access related model', co ->
+            [alice, bob, inviter] = yield fixtures.aliceAndBob()
+            yield alice.load('invited')
+            alice.$invited.should.be.an.instanceof User
+            console.log alice.$invited
+            alice.$invited.id.should.equal bob.id
+

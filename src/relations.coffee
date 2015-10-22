@@ -241,6 +241,33 @@ class BelongsTo extends Relation
         foreignKey = @options.foreignKey
         -> @belongsTo related, foreignKey
 
+    # Patch returned relations joinClause
+    # TODO: apply withPivot
+    # TODO: auto-discover withPivot columns from through models schema
+    _applyThrough: (builder) ->
+        return builder unless @options.through
+        interim = @options.through
+        throughForeignKey = @options.throughForeignKey
+        otherKey = @options.otherKey
+        ->
+            relation = builder.call(this).through(interim, throughForeignKey, otherKey)
+            relation.relatedData.joinClauses = BelongsTo._patchedJoinClauses
+            relation
+
+    @_patchedJoinClauses: (knex) ->
+        joinTable = @joinTable()
+        targetKey = @key('foreignKey')
+
+        knex.join \
+            joinTable,
+            joinTable + '.' + targetKey, '=',
+            @targetTableName + '.' + @targetIdAttribute
+
+        knex.join \
+            "#{@parentTableName} as __parent",
+            "#{joinTable}.#{@throughIdAttribute}", '=',
+            "__parent.#{@key('throughForeignKey')}"
+
 class HasMany extends Relation
     @multiple: true
 
