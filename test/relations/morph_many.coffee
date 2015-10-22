@@ -84,7 +84,7 @@ describe "Relations", ->
         it 'detach all related objects when empty list assigned', co ->
             [alice, _] = yield fixtures.alice()
 
-            yield Tag.where(tagable_id: alice.id, tagable_type: 'users').count().should.become 2
+            yield Tag.where(tagable_id: alice.id, tagable_type: 'users').count().then(parseInt).should.become 2
             yield alice.$tags.assign []
-            yield Tag.where(tagable_id: alice.id, tagable_type: 'users').count().should.become 0
+            Tag.where(tagable_id: alice.id, tagable_type: 'users').count().then(parseInt).should.become 0
 

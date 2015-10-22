@@ -83,7 +83,7 @@ describe "Relations", ->
         it 'detach all related objects when empty list assigned', co ->
             [alice, _] = yield fixtures.alice()
 
-            Photo.where('user_id', '=', alice.id).count().should.become 2
+            yield Photo.where('user_id', '=', alice.id).count().then(parseInt).should.become 2
             yield alice.$photos.assign []
-            Photo.where('user_id', '=', alice.id).count().should.become 0
+            Photo.where('user_id', '=', alice.id).count().then(parseInt).should.become 0
 
