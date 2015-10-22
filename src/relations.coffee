@@ -48,13 +48,6 @@
 #
 ###
 
-###
-#
-# HasOne, BelongsTo, HasMany, BelongsToMany,
-# MorphOne, MorphMany, MorphTo
-#
-###
-
 pluralize = require 'pluralize'
 {IntField} = require './fields'
 {Fulfilled, Rejected} = require './utils'
@@ -241,7 +234,7 @@ class BelongsTo extends Relation
         foreignKey = @options.foreignKey
         -> @belongsTo related, foreignKey
 
-    # Patch returned relations joinClause
+    # Patch returned relations joinClauses and whereClauses
     # TODO: apply withPivot
     # TODO: auto-discover withPivot columns from through models schema
     _applyThrough: (builder) ->
@@ -252,6 +245,7 @@ class BelongsTo extends Relation
         ->
             relation = builder.call(this).through(interim, throughForeignKey, otherKey)
             relation.relatedData.joinClauses = BelongsTo._patchedJoinClauses
+            relation.relatedData.whereClauses = BelongsTo._patchedWhereClauses
             relation
 
     @_patchedJoinClauses: (knex) ->
@@ -267,6 +261,10 @@ class BelongsTo extends Relation
             "#{@parentTableName} as __parent",
             "#{joinTable}.#{@throughIdAttribute}", '=',
             "__parent.#{@key('throughForeignKey')}"
+
+    @_patchedWhereClauses: (knex, resp) ->
+        key = "__parent.#{@parentIdAttribute}"
+        knex[if resp then 'whereIn' else 'where'](key, if resp then @eagerKeys(resp) else @parentFk)
 
 class HasMany extends Relation
     @multiple: true

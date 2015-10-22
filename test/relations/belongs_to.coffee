@@ -94,7 +94,7 @@ describe "Relations", ->
             expect(photo1.user_id).to.be.null
 
     # XXX doesn't work with self-join
-    describe.skip 'through', ->
+    describe 'through', ->
         before -> init.inviters()
 
         beforeEach ->
@@ -115,10 +115,8 @@ describe "Relations", ->
 
         afterEach -> init.truncate 'users', 'inviters'
 
-        it 'blah can access related model', co ->
+        it 'can access related model', co ->
             [alice, bob, inviter] = yield fixtures.aliceAndBob()
             yield alice.load('invited')
             alice.$invited.should.be.an.instanceof User
-            console.log alice.$invited
             alice.$invited.id.should.equal bob.id
-
