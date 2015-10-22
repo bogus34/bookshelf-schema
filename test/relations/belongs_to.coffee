@@ -27,8 +27,8 @@ describe "Relations", ->
                  new User(username: 'alice').save()
                  new User(username: 'bob').save()
             ]
-            inviter = yield new Inviter(greeting: 'Hello Bob!', user_id: bob.id).save()
-            yield alice.save(invited: inviter.id)
+            inviter = yield new Inviter(greeting: 'Hello Bob!', user_id: alice.id).save()
+            yield bob.save(inviter_id: inviter.id)
             [alice, bob, inviter]
 
     before co ->
@@ -106,7 +106,7 @@ describe "Relations", ->
 
                 @schema [
                     StringField 'username'
-                    BelongsTo User, name: 'invited', through: Inviter, throughForeignKey: 'invited'
+                    BelongsTo User, name: 'inviter', through: Inviter
                 ]
 
             Inviter.schema [
@@ -117,6 +117,6 @@ describe "Relations", ->
 
         it 'can access related model', co ->
             [alice, bob, inviter] = yield fixtures.aliceAndBob()
-            yield alice.load('invited')
-            alice.$invited.should.be.an.instanceof User
-            alice.$invited.id.should.equal bob.id
+            yield bob.load('inviter')
+            bob.$inviter.should.be.an.instanceof User
+            bob.$inviter.id.should.equal alice.id

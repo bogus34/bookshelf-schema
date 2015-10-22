@@ -47,7 +47,7 @@ users = co ->
         table.dateTime 'last_login'
         table.date 'birth_date'
         table.json 'additional_data'
-        table.integer 'invited'
+        table.integer 'inviter_id'
 
 photos = co ->
     init() unless db
