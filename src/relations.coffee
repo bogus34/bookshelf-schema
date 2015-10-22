@@ -26,16 +26,14 @@
 #
 # Photo.forge(id: 1).fetch(withRelated: 'user').then (photo) ->
 #     photo.user                              # function
-#     photo.related('user')                   # Model
+#     photo.related('user')                   # Collection
 #     photo.$user                             # Collection
-#     photo.$user = user                      # set user_id to user.id
 #     photo.$user.assign(user)                # set user_id to user.id and save
 #
 # User.forge(id: 1).fetch(withRelated: 'photos').then (user) ->
 #     user.photos                             # function
 #     user.related('photos')                  # Collection
 #     user.$photos                            # Collection
-#     user.$photos = [...]                    # detach all photos and attach listed
 #     user.$photos.assign(...)                # detach all photos and attach listed
 #     user.$photos.attach(...)                # attach listed photos and save them
 #     user.$photos.detach(...)                # detach listed photos
