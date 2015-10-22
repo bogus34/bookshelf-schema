@@ -65,7 +65,6 @@ describe "Relations", ->
             yield alice.load 'photos'
             alice.$photos.should.be.an.instanceof db.Collection
             alice.$photos.at(0).user_id.should.be.equal alice.id
-            console.log alice.$photos
 
         it 'can assign list of models to relation', co ->
             [alice, [photo1, photo2]] = yield fixtures.alice()

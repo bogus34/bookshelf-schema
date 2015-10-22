@@ -100,13 +100,19 @@ class Relation
         @name = @options.name || @_deduceName(@relatedModel)
 
     pluginOption: (name, defaultVal) -> @model.__bookshelf_schema_options[name] or defaultVal
+    option: (name, pluginOptionName, defaultVal) ->
+        if arguments.length is 2
+            defaultVal = pluginOptionName
+            pluginOptionName = name
+        value = @options[name]
+        value = @pluginOption(pluginOptionName, defaultVal) unless value?
+        value
     contributeToSchema: (schema) -> schema.push this
     contributeToModel: (cls) ->
         @model = cls
         @accessor = @options.accessor || @_deduceAccessorName(@name)
         cls::[@name] = @createRelation(cls) unless @name of cls.prototype
-        if (@options.createProperty or !@options.createProperty?)\
-        and @pluginOption('createProperties')
+        if @option('createProperty', 'createProperties', true)
             @_createProperty(cls)
 
     createRelation: (cls) ->
@@ -116,6 +122,16 @@ class Relation
 
         self = this
         -> self._augementRelated this, relation.apply(this, arguments)
+
+    createGetter: ->
+        self = this
+        ->
+            related = @related(self.name)
+            unless related.__augemented
+                self._augementRelated this, related
+            related
+
+    createSetter: ->
 
     # TODO: apply withPivot
     # TODO: auto-discover withPivot columns from through models schema
@@ -130,16 +146,6 @@ class Relation
         return builder unless @options.query
         query = @options.query
         -> query.apply builder.call(this)
-
-    createGetter: ->
-        self = this
-        ->
-            related = @related(self.name)
-            unless related.__augemented
-                self._augementRelated this, related
-            related
-
-    createSetter: ->
 
     _augementRelated: (parent, related) ->
         return related unless @constructor.helperMethods

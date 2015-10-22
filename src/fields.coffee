@@ -10,7 +10,18 @@ class Field
         return new Field(name) unless this instanceof Field
         @name = name
         @options = options
-    pluginOption: (name) -> @model.__bookshelf_schema_options[name]
+    pluginOption: (name, defaultVal) ->
+        if name of @model.__bookshelf_schema_options
+            @model.__bookshelf_schema_options[name]
+        else
+            defaultVal
+    option: (name, pluginOptionName, defaultVal) ->
+        if arguments.length is 2
+            defaultVal = pluginOptionName
+            pluginOptionName = name
+        value = @options[name]
+        value = @pluginOption(pluginOptionName, defaultVal) unless value?
+        value
     contributeToSchema: (schema) -> schema.push this
     contributeToModel: (cls) ->
         @model = cls
@@ -18,9 +29,9 @@ class Field
             validations: {}
             parsers: []
             formatters: []
-        if (@options.createProperty or !@options.createProperty?) and @pluginOption('createProperties')
+        if @option('createProperty', 'createProperties', true)
             @_createProperty(cls)
-        if @pluginOption('validation')
+        if @option('validation', true)
             @_appendValidations(cls)
         @_appendFormatter()
         @_appendParser()
