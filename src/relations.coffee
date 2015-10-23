@@ -139,19 +139,6 @@ class Relation
 
     _deduceAccessorName: -> "#{@pluginOption('relationAccessorPrefix', '$')}#{@name}"
 
-    _forceTransaction: (options, callback) ->
-        options ?= {}
-        t = if options.transacting
-            options.transacting.transaction
-        else
-            @model.transaction
-
-        t (trx) ->
-            oldTtransacting = options.transacting
-            options.transacting = trx
-            promiseFinally callback(options), ->
-                options.transacting = oldTtransacting
-
 class HasOne extends Relation
     constructor: (model, options = {}) ->
         return new HasOne(arguments...) unless this instanceof HasOne
@@ -220,6 +207,20 @@ class HasMany extends Relation
         super
 
     @injectedMethods: require './relations/has_many'
+
+    onDestroy: (model, options) ->
+        switch @option('onDestroy', 'ignore')
+            when 'ignore'
+                return
+            when 'cascade'
+                @_destroyCascade(model, options)
+
+    _destroyCascade: (model, options) ->
+        model[@name]().fetch(options).then (related) ->
+            related.forEach (obj) ->
+                key = "#{obj.tableName}:#{obj.id}"
+                unless options.destroyingCache[key]?
+                    options.destroyingCache[key] = obj.destroy(options)
 
     _createRelation: (cls) ->
         related = @relatedModel

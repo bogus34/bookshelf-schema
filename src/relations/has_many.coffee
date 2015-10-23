@@ -1,4 +1,4 @@
-{Rejected, Fulfilled} = require '../utils'
+{Rejected, Fulfilled, forceTransaction} = require '../utils'
 cast = require './cast'
 fixedCount = require './count'
 
@@ -12,7 +12,7 @@ module.exports =
         list ?= []
         list = [list] unless list instanceof Array
 
-        relation._forceTransaction options, (options) =>
+        forceTransaction relation.model.transaction, options, (options) =>
             try
                 currentObjs = model[relation.name]().fetch(options)
 

@@ -135,3 +135,35 @@ describe "Relations", ->
             alice.$invited.should.be.an.instanceof db.Collection
             alice.$invited.pluck('username').sort().should.deep.equal ['bob', 'charley']
 
+    describe 'onDestroy', ->
+        beforeEach ->
+            class User extends db.Model
+                tableName: 'users'
+
+            class Photo extends db.Model
+                tableName: 'photos'
+
+                @schema [
+                    StringField 'filename'
+                    BelongsTo User
+                ]
+
+        afterEach -> init.truncate 'users', 'photos'
+
+        it 'can cascade-destroy dependend models', co ->
+            User.schema [
+                StringField 'username'
+                HasMany Photo, onDestroy: 'cascade'
+            ]
+
+            [alice, [photo1, photo2]] = yield fixtures.alice()
+            photo3 = yield new Photo(filename: 'photo3.jpg', user_id: null).save()
+
+            yield alice.$photos.count().should.become 2
+            aliceId = alice.id
+            yield alice.destroy()
+
+            yield [
+                 Photo.where('user_id', '=', aliceId).count().then(parseInt).should.become 0
+                 Photo.where('id', '=', photo3.id).count().then(parseInt).should.become 1
+            ]

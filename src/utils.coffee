@@ -1,4 +1,4 @@
-module.exports =
+utils =
     Fulfilled: (value) -> new Promise (resolve, reject) -> resolve(value)
     Rejected: (e) -> new Promise (resolve, reject) -> reject(e)
     promiseFinally: (p, callback) ->
@@ -17,3 +17,16 @@ module.exports =
             result[f] = obj[f]
         result
     upperFirst: (str) -> str[0].toUpperCase() + str[1..]
+    forceTransaction: (transaction, options, callback) ->
+        options ?= {}
+
+        if options.transacting?
+            callback(options)
+        else
+            transaction (trx) ->
+                oldTtransacting = options.transacting
+                options.transacting = trx
+                utils.promiseFinally callback(options), ->
+                    options.transacting = oldTtransacting
+
+module.exports = utils

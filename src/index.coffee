@@ -10,7 +10,7 @@ CheckIt = require 'checkit'
 #         IntField 'age'
 #         EmailField 'email'
 #
-#         HasMany 'photos', Photo, onDelete: 'cascade'
+#         HasMany 'photos', Photo, onDestroy: 'cascade'
 #     ]
 # });
 #
@@ -21,10 +21,12 @@ CheckIt = require 'checkit'
 #         IntField 'age'
 #         EmailField 'email'
 #
-#         HasMany 'photos', Photo, onDelete: 'cascade'
+#         HasMany 'photos', Photo, onDestroy: 'cascade'
 #     ]
 #
 ###
+
+utils = require './utils'
 
 plugin = (options = {}) -> (db) ->
     options.createProperties ?= true
@@ -40,6 +42,7 @@ plugin = (options = {}) -> (db) ->
     replaceExtend Model
     replaceFormat Model
     replaceParse Model
+    replaceDestroy Model
 
 applySchema = (schema) ->
     @__schema = buildSchema schema
@@ -80,6 +83,12 @@ replaceParse = (Model) ->
                 f attrs, options
         attrs
 
+replaceDestroy = (Model) ->
+    originalDestroy = Model::destroy
+    Model::destroy = (options) ->
+        utils.forceTransaction Model.transaction, options, (options) =>
+            originalDestroy.call this, options
+
 buildSchema = (entities) ->
     schema = []
     e.contributeToSchema?(schema) for e in entities
@@ -89,10 +98,21 @@ contributeToModel = (cls, entities) ->
     e.contributeToModel(cls) for e in entities
     undefined
 
+handleDestroy = (model, options = {}) ->
+    options.destroyingCache = {}
+    handled = (e.onDestroy?(model, options) for e in @constructor.__schema)
+    Promise.all(handled)
+    .then -> Promise.all utils.values(options.destroyingCache)
+    .then -> delete options.destroyingCache
+
 initSchema = ->
     e.initialize?(this) for e in @constructor.__schema
     if @constructor.__bookshelf_schema_options.validation
         @on 'saving', @validate, this
+    for e in @constructor.__schema when e.onDestroy?
+        @on 'destroying', handleDestroy, this
+        # _handleDestroy will iterate over all schema entities so we break here
+        break
     undefined
 
 {Fulfilled} = require './utils'
