@@ -31,6 +31,8 @@ plugin = (options = {}) -> (db) ->
     options.validation ?= true
 
     Model = db.Model
+    Model.db = db
+    Model.transaction = db.transaction.bind db
     Model.__bookshelf_schema_options = options
     Model.schema = applySchema
     Model::validate = validate

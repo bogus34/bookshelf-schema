@@ -63,14 +63,23 @@ values = (obj) -> v for k, v of obj
 
 notNull = (a) -> a?
 
+promiseFinally = (p, callback) ->
+    p.then( (v) ->
+        callback()
+        v
+    , (e) ->
+        callback()
+        throw e
+    )
+
 cast =
-    forgeOrFetch: (self, obj, msg) ->
+    forgeOrFetch: (self, obj, options, msg) ->
         model = self.model or self.constructor
         switch
             when obj is null
                 Fulfilled null
             when typeof obj is 'number'
-                model.forge(id: obj).fetch()
+                model.forge(id: obj).fetch(options)
             when obj.constructor is Object
                 Fulfilled model.forge(obj)
             when obj instanceof model
@@ -86,7 +95,7 @@ cast =
             when typeof obj is 'number'
                 model.forge(id: obj).fetch(options)
             when obj.constructor is Object
-                model.forge(obj).save(options)
+                model.forge(obj).save(null, options)
             when obj instanceof model
                 Fulfilled obj
             else
@@ -195,6 +204,19 @@ class Relation
 
     _deduceAccessorName: -> "#{@pluginOption('relationAccessorPrefix', '$')}#{@name}"
 
+    _forceTransaction: (options, callback) ->
+        options ?= {}
+        t = if options.transacting
+            options.transacting.transaction
+        else
+            @model.transaction
+
+        t (trx) ->
+            oldTtransacting = options.transacting
+            options.transacting = trx
+            promiseFinally callback(options), ->
+                options.transacting = oldTtransacting
+
 class HasOne extends Relation
     constructor: (model, options = {}) ->
         return new HasOne(arguments...) unless this instanceof HasOne
@@ -205,12 +227,11 @@ class HasOne extends Relation
         assign: (model, relation, obj, options) ->
             if relation.options.through
                 return Rejected new Error "Can't assign relation with interim model"
-            options = pluck options, 'transacting'
             foreignKey = @relatedData.key 'foreignKey'
 
             try
-                obj = cast.forgeOrFetch this, obj, "Can't assign #{obj} to #{model} as a #{relation.name}"
-                old = model[relation.name]().fetch()
+                obj = cast.forgeOrFetch this, obj, options, "Can't assign #{obj} to #{model} as a #{relation.name}"
+                old = model[relation.name]().fetch(options)
 
                 Promise.all([old, obj]).then ([old, obj]) ->
                     pending = []
@@ -219,7 +240,7 @@ class HasOne extends Relation
                         pending.push old.save(foreignKey, null, options)
                     if obj?
                         obj.set(foreignKey, model.id)
-                        pending.push obj.save(options)
+                        pending.push obj.save(null, options)
                     Promise.all pending
             catch e
                 Rejected e
@@ -243,7 +264,6 @@ class BelongsTo extends Relation
         assign: (model, relation, obj, options) ->
             if relation.options.through
                 return Rejected new Error "Can't assign relation with interim model"
-            options = pluck options, 'transacting'
             foreignKey = @relatedData.key 'foreignKey'
 
             try
@@ -305,41 +325,42 @@ class HasMany extends Relation
                 return Rejected new Error "Can't assign relation with interim model"
             list ?= []
             list = [list] unless list instanceof Array
-            options = pluck options, 'transacting'
 
-            try
-                currentObjs = model[relation.name]().fetch()
-                attachObjs  = Promise.all \
-                    list.map( (obj) =>
-                        cast.forgeOrFetch this, obj, "Can't assign #{obj} to #{model} as a #{relation.name}"
-                    ).filter(notNull)
+            relation._forceTransaction options, (options) =>
+                try
+                    currentObjs = model[relation.name]().fetch(options)
 
-                Promise.all([currentObjs, attachObjs]).then ([currentObjs, attachObjs]) =>
-                    currentObjs = currentObjs.models
+                    attachObjs = for obj in list
+                        p = cast.forgeOrFetch this, obj, options, "Can't assign #{obj} to #{model} as a #{relation.name}"
+                        continue unless p
+                        p
 
-                    idx = currentObjs.reduce (memo, obj) ->
-                        memo[obj.id] = obj
-                        memo
-                    , {}
+                    attachObjs = Promise.all attachObjs
 
-                    attachObj = for obj in attachObjs
-                        continue unless obj.id
-                        if idx[obj.id]
-                            delete idx[obj.id]
-                            continue
-                        else
-                            obj
+                    return Promise.all([currentObjs, attachObjs]).then ([currentObjs, attachObjs]) =>
+                        currentObjs = currentObjs.models
 
-                    detachObjs = (obj for k, obj of idx)
+                        idx = currentObjs.reduce (memo, obj) ->
+                            memo[obj.id] = obj
+                            memo
+                        , {}
 
-                    @detach(detachObjs, options).then => @attach(attachObjs, options)
-            catch e
-                Rejected e
+                        attachObjs = for obj in attachObjs
+                            if obj.id? and idx[obj.id]
+                                delete idx[obj.id]
+                                continue
+                            else
+                                obj
+
+                        detachObjs = (obj for k, obj of idx)
+
+                        @detach(detachObjs, options).then => @attach(attachObjs, options)
+                catch e
+                    Rejected e
 
         attach: (model, relation, list, options) ->
             return unless list?
             list = [list] unless list instanceof Array
-            options = pluck options, 'transacting'
             try
                 unloaded = []
                 created = []
@@ -358,7 +379,7 @@ class HasMany extends Relation
                 loadUnloaded = if unloaded.length is 0
                     Fulfilled @model.collection()
                 else
-                    @model.collection().where(@model.idAttribute, 'in', unloaded).fetch()
+                    @model.collection().where(@model.idAttribute, 'in', unloaded).fetch(options)
 
                 loadUnloaded.then (unloaded) =>
                     unloaded = unloaded.models
@@ -369,12 +390,11 @@ class HasMany extends Relation
                 Rejected e
 
         _attachOne: (model, relation, obj, options) ->
-            obj.set(@relatedData.key('foreignKey'), model.id).save(options)
+            obj.set(@relatedData.key('foreignKey'), model.id).save(null, options)
 
         detach: (model, relation, list, options) ->
             return unless list?
             list = [list] unless list instanceof Array
-            options = pluck options, 'transacting'
             try
                 unloaded = []
                 models = []
@@ -390,7 +410,7 @@ class HasMany extends Relation
                 loadUnloaded = if unloaded.length is 0
                     Fulfilled @model.collection()
                 else
-                    @model.collection().where(@model.idAttribute, 'in', unloaded).fetch()
+                    @model.collection().where(@model.idAttribute, 'in', unloaded).fetch(options)
 
                 loadUnloaded.then (unloaded) =>
                     unloaded = unloaded.models
@@ -401,7 +421,7 @@ class HasMany extends Relation
                 Rejected e
 
         _detachOne: (model, relation, obj, options) ->
-            obj.set(@relatedData.key('foreignKey'), null).save(options)
+            obj.set(@relatedData.key('foreignKey'), null).save(null, options)
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -436,9 +456,9 @@ class BelongsToMany extends Relation
                         else
                             throw new Error("Can't attach #{obj} to #{model} as a #{relation.name}")
 
-                unsaved = unsaved.map( (obj) -> obj.save() )
+                unsaved = unsaved.map( (obj) -> obj.save(null, options) )
                 Promise.all(unsaved).then (saved) =>
-                    @_originalAttach saved.concat(other)
+                    @_originalAttach saved.concat(other), options
             catch e
                 Rejected e
 
@@ -457,14 +477,13 @@ class MorphOne extends Relation
 
     @helperMethods:
         assign: (model, relation, obj, options) ->
-            options = pluck options, 'transacting'
             foreignKey = @relatedData.key 'foreignKey'
             morphKey = @relatedData.key 'morphKey'
             morphValue = @relatedData.key 'morphValue'
 
             try
-                obj = cast.forgeOrFetch this, obj, "Can't assign #{obj} to #{model} as a #{relation.name}"
-                old = model[relation.name]().fetch()
+                obj = cast.forgeOrFetch this, obj, options, "Can't assign #{obj} to #{model} as a #{relation.name}"
+                old = model[relation.name]().fetch(options)
 
                 Promise.all([old, obj]).then ([old, obj]) ->
                     pending = []
@@ -472,11 +491,11 @@ class MorphOne extends Relation
                         old = old.clone() # force knex not to use relatedData
                         old.set foreignKey, null
                         old.set morphKey, null
-                        pending.push old.save()
+                        pending.push old.save(null, options)
                     if obj?
                         obj.set foreignKey, model.id
                         obj.set morphKey, morphValue
-                        pending.push obj.save(options)
+                        pending.push obj.save(null, options)
                     Promise.all pending
             catch e
                 Rejected e
@@ -504,12 +523,12 @@ class MorphMany extends Relation
         _attachOne: (model, relation, obj, options) ->
             obj.set @relatedData.key('foreignKey'), model.id
             obj.set @relatedData.key('morphKey'), @relatedData.key('morphValue')
-            obj.save options
+            obj.save null, options
         detach: HasMany.helperMethods.detach
         _detachOne: (model, relation, obj, options) ->
             obj.set @relatedData.key('foreignKey'), null
             obj.set @relatedData.key('morphKey'), null
-            obj.save options
+            obj.save null, options
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -530,13 +549,12 @@ class MorphTo extends Relation
             unless typeof morphValue is 'string'
                 options = morphValue
                 morphValue = obj.tableName
-            options = pluck options, 'transacting'
             foreignKey = @relatedData.key 'foreignKey'
             morphKey = @relatedData.key 'morphKey'
 
             model.set foreignKey, obj.id
             model.set morphKey, morphValue
-            model.save(options)
+            model.save(null, options)
 
     _createRelation: (cls) ->
         args = [@polymorphicName]
