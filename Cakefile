@@ -30,7 +30,9 @@ task "test", "run tests", (options) ->
     env = process.env
     env['NODE_ENV'] = 'test'
     env['BOOKSHELF_SCHEMA_TESTS_DB_VARIANT'] = db_variant
-    env['BOOKSHELF_SCHEMA_TESTS_DEBUG'] = '1' if options['debug-sql']
+    if options['debug-sql']
+        env['BOOKSHELF_SCHEMA_TESTS_DEBUG'] = '1'
+        env['DEBUG'] = env['DEBUG'] + ' knex:query'
     spawn mocha,
         ['--compilers', 'coffee:coffee-script',
         '--reporter', "#{REPORTER}",
