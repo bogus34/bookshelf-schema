@@ -108,9 +108,9 @@ class Relation
         -> query.apply builder.call(this)
 
     _augementRelated: (parent, related) ->
-        return related unless @constructor.helperMethods
+        return related unless @constructor.injectedMethods
         self = this
-        for name, method of @constructor.helperMethods
+        for name, method of @constructor.injectedMethods
             do (method) ->
                 if name of related
                     related["_original#{upperFirst(name)}"] = related[name]
@@ -157,7 +157,7 @@ class HasOne extends Relation
         return new HasOne(arguments...) unless this instanceof HasOne
         super
 
-    @helperMethods: require './relations/has_one'
+    @injectedMethods: require './relations/has_one'
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -173,7 +173,7 @@ class BelongsTo extends Relation
         super
         schema.push IntField "#{@name}_id"
 
-    @helperMethods: require './relations/belongs_to'
+    @injectedMethods: require './relations/belongs_to'
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -219,7 +219,7 @@ class HasMany extends Relation
         return new HasMany(arguments...) unless this instanceof HasMany
         super
 
-    @helperMethods: require './relations/has_many'
+    @injectedMethods: require './relations/has_many'
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -233,7 +233,7 @@ class BelongsToMany extends Relation
         return new BelongsToMany(arguments...) unless this instanceof BelongsToMany
         super
 
-    @helperMethods: require './relations/belongs_to_many'
+    @injectedMethods: require './relations/belongs_to_many'
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -248,7 +248,7 @@ class MorphOne extends Relation
         super model, options
         @polymorphicName = polymorphicName
 
-    @helperMethods: require './relations/morph_one'
+    @injectedMethods: require './relations/morph_one'
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -265,7 +265,7 @@ class MorphMany extends Relation
         super model, options
         @polymorphicName = polymorphicName
 
-    @helperMethods: require './relations/morph_many'
+    @injectedMethods: require './relations/morph_many'
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -281,7 +281,7 @@ class MorphTo extends Relation
         super targets, options
         @polymorphicName = polymorphicName
 
-    @helperMethods: require './relations/morph_to'
+    @injectedMethods: require './relations/morph_to'
 
     _createRelation: (cls) ->
         args = [@polymorphicName]
