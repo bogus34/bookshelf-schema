@@ -1,8 +1,8 @@
 {values} = require '../utils'
 
 # Originally posted by @nathggns at https://github.com/tgriesser/bookshelf/issues/126
-module.exports = (object) ->
-    sync = object.sync()
+module.exports = (object, options) ->
+    sync = object.sync(options)
 
     relatedData = sync.syncing.relatedData
     if relatedData.isJoined()

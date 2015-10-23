@@ -120,3 +120,56 @@ describe "Relations", ->
             alice.$invited.should.be.an.instanceof User
             alice.$invited.id.should.equal bob.id
 
+    describe 'onDestroy', ->
+        beforeEach ->
+            class Profile extends db.Model
+                tableName: 'profiles'
+
+                @schema [
+                    StringField 'greetings'
+                    IntField 'user_id'
+                ]
+
+            class User extends db.Model
+                tableName: 'users'
+
+        afterEach -> init.truncate 'users', 'profiles'
+
+        it 'can cascade-destroy dependent models', co ->
+            User.schema [
+                HasOne Profile, onDestroy: 'cascade'
+            ]
+
+            [alice, profile] = yield fixtures.alice()
+            profile2 = yield new Profile(greetings: 'Hi!').save()
+
+            yield alice.destroy().should.be.fulfilled
+
+            [profile, profile2] = yield [
+                new Profile(id: profile.id).fetch()
+                new Profile(id: profile2.id).fetch()
+            ]
+
+            expect(profile).to.be.null
+            expect(profile2).not.to.be.null
+
+        it 'can reject destroy when there id dependent model', co ->
+            User.schema [
+                HasOne Profile, onDestroy: 'reject'
+            ]
+
+            [alice, _] = yield fixtures.alice()
+            yield alice.destroy().should.be.rejected
+            yield alice.$profile.assign null
+            alice.destroy()
+
+        it 'can detach dependent models on destroy', co ->
+            User.schema [
+                HasOne Profile, onDestroy: 'detach'
+            ]
+
+            [alice, profile] = yield fixtures.alice()
+            yield alice.destroy().should.be.fulfilled
+
+            profile = yield new Profile(id: profile.id).fetch()
+            expect(profile.user_id).to.be.null

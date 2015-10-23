@@ -93,6 +93,17 @@ class Relation
 
     createSetter: ->
 
+    onDestroy: (model, options) ->
+        switch @option('onDestroy', 'ignore')
+            when 'ignore'
+                return
+            when 'cascade'
+                @_destroyCascade model, options
+            when 'reject'
+                @_destroyReject model, options
+            when 'detach'
+                @_destroyDetach model, options
+
     # TODO: apply withPivot
     # TODO: auto-discover withPivot columns from through models schema
     _applyThrough: (builder) ->
@@ -146,6 +157,16 @@ class HasOne extends Relation
 
     @injectedMethods: require './relations/has_one'
 
+    _destroyCascade: (model, options) ->
+        model[@name]().fetch(options).then (obj) -> obj?.destroy(options)
+
+    _destroyReject: (model, options) ->
+        model[@name]().fetch(options).then (obj) ->
+            Rejected new Error('destroy rejected') if obj
+
+    _destroyDetach: (model, options) ->
+        model[@accessor].assign null, options
+
     _createRelation: (cls) ->
         related = @relatedModel
         foreignKey = @options.foreignKey
@@ -161,6 +182,15 @@ class BelongsTo extends Relation
         schema.push IntField "#{@name}_id"
 
     @injectedMethods: require './relations/belongs_to'
+
+    _destroyCascade: (model, options) ->
+        model[@name]().fetch(options).then (obj) -> obj?.destroy(options)
+
+    _destroyReject: (model, options) ->
+        model[@name]().fetch(options).then (obj) ->
+            Rejected new Error('destroy rejected') if obj
+
+    _destroyDetach: (model, options) ->
 
     _createRelation: (cls) ->
         related = @relatedModel
@@ -208,19 +238,19 @@ class HasMany extends Relation
 
     @injectedMethods: require './relations/has_many'
 
-    onDestroy: (model, options) ->
-        switch @option('onDestroy', 'ignore')
-            when 'ignore'
-                return
-            when 'cascade'
-                @_destroyCascade(model, options)
-
     _destroyCascade: (model, options) ->
         model[@name]().fetch(options).then (related) ->
             related.forEach (obj) ->
                 key = "#{obj.tableName}:#{obj.id}"
                 unless options.destroyingCache[key]?
                     options.destroyingCache[key] = obj.destroy(options)
+
+    _destroyReject: (model, options) ->
+        model[@accessor].count(options).then (count) ->
+            Rejected new Error("destroy was reject") if count > 0
+
+    _destroyDetach: (model, options) ->
+        model[@accessor].assign [], options
 
     _createRelation: (cls) ->
         related = @relatedModel

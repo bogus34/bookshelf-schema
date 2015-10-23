@@ -150,9 +150,8 @@ describe "Relations", ->
 
         afterEach -> init.truncate 'users', 'photos'
 
-        it 'can cascade-destroy dependend models', co ->
+        it 'can cascade-destroy dependent models', co ->
             User.schema [
-                StringField 'username'
                 HasMany Photo, onDestroy: 'cascade'
             ]
 
@@ -161,9 +160,34 @@ describe "Relations", ->
 
             yield alice.$photos.count().should.become 2
             aliceId = alice.id
-            yield alice.destroy()
+            yield alice.destroy().should.be.fulfilled
 
             yield [
                  Photo.where('user_id', '=', aliceId).count().then(parseInt).should.become 0
                  Photo.where('id', '=', photo3.id).count().then(parseInt).should.become 1
             ]
+
+        it 'can reject destroy when there is any dependent models', co ->
+            User.schema [
+                HasMany Photo, onDestroy: 'reject'
+            ]
+
+            [alice, _] = yield fixtures.alice()
+            yield alice.destroy().should.be.rejected
+            yield alice.$photos.assign []
+            alice.destroy().should.be.fulfilled
+
+        it 'can detach dependend models on destroy', co ->
+            User.schema [
+                HasMany Photo, onDestroy: 'detach'
+            ]
+
+            [alice, photos] = yield fixtures.alice()
+            photoIds = (photo.id for photo in photos)
+            yield alice.destroy().should.be.fulfilled
+
+            Photo.collection().query (qb) ->
+                qb.whereIn 'id', photoIds
+            .fetch()
+            .then (c) -> c.pluck 'user_id'
+            .should.become [null, null]

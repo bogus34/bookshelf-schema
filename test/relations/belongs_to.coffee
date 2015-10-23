@@ -120,3 +120,47 @@ describe "Relations", ->
             yield bob.load('inviter')
             bob.$inviter.should.be.an.instanceof User
             bob.$inviter.id.should.equal alice.id
+
+    describe 'onDestroy', ->
+        beforeEach ->
+            class Photo extends db.Model
+                tableName: 'photos'
+
+            class User extends db.Model
+                tableName: 'users'
+
+        afterEach -> init.truncate 'users', 'photos'
+
+        it 'can cascade-destroy dependent models', co ->
+            Photo.schema [
+                BelongsTo User, onDestroy: 'cascade'
+            ]
+
+            [alice, [photo1, photo2]] = yield fixtures.alice()
+            yield photo1.destroy().should.be.fulfilled
+            [alice, photo2] = yield [
+                new User(id: alice.id).fetch()
+                new Photo(id: photo2.id).fetch()
+            ]
+
+            expect(alice).to.be.null
+            expect(photo2).not.to.be.null
+
+        it 'can reject destroy when there is dependent model', co ->
+            Photo.schema [
+                BelongsTo User, onDestroy: 'reject'
+            ]
+
+            [alice, [photo1, _]] = yield fixtures.alice()
+            yield photo1.destroy().should.be.rejected
+            yield photo1.$user.assign null
+            photo1.destroy().should.be.fulfilled
+
+        it 'can detach dependend models on destroy', co ->
+            Photo.schema [
+                # this actually a no-op
+                BelongsTo User, onDestroy: 'detach'
+            ]
+
+            [alice, [photo1, _]] = yield fixtures.alice()
+            yield photo1.destroy().should.be.fulfilled
