@@ -102,3 +102,61 @@ describe "Relations", ->
                 alice.$groups.count().should.become 2
                 alice.$groups._originalCount().should.not.become 2
             ]
+
+    describe 'onDestroy', ->
+        beforeEach ->
+            class Group extends db.Model
+                tableName: 'groups'
+
+            class User extends db.Model
+                tableName: 'users'
+
+        afterEach -> init.truncate 'users', 'groups', 'groups_users'
+
+        it 'can cascade-destroy dependent models', co ->
+            User.schema [
+                BelongsToMany Group, onDestroy: 'cascade'
+            ]
+
+            [alice, groups] = yield [
+                fixtures.alice()
+                fixtures.groups('users', 'music', 'games')
+            ]
+            aliceId = alice.id
+            yield fixtures.connect alice, groups[..1]
+            yield alice.$groups.count().should.become 2
+            yield alice.destroy()
+
+            yield [
+                db.knex('groups_users').where(user_id: aliceId).count('*').should.become [{'count(*)': 0}]
+                Group.forge(id: groups[2].id).fetch().should.eventually.have.property 'id'
+            ]
+
+        it 'can reject destroy when there is any dependent models', co ->
+            User.schema [
+                BelongsToMany Group, onDestroy: 'reject'
+            ]
+
+            [alice, groups] = yield [
+                fixtures.alice()
+                fixtures.groups('users', 'music', 'games')
+            ]
+            yield fixtures.connect alice, groups[..1]
+            yield alice.destroy().should.be.rejected
+            yield alice.$groups.assign []
+            alice.destroy().should.be.fulfilled
+
+        it 'can detach dependend models on destroy', co ->
+            User.schema [
+                BelongsToMany Group, onDestroy: 'detach'
+            ]
+
+            [alice, groups] = yield [
+                fixtures.alice()
+                fixtures.groups('users', 'music', 'games')
+            ]
+            aliceId = alice.id
+            yield fixtures.connect alice, groups[..1]
+            yield alice.destroy().should.be.fulfilled
+
+            db.knex('groups_users').where(user_id: aliceId).count('*').should.become [{'count(*)': 0}]

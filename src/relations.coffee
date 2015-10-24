@@ -47,7 +47,7 @@
 ###
 
 pluralize = require 'pluralize'
-{IntField} = require './fields'
+{IntField, StringField} = require './fields'
 {Fulfilled, Rejected, promiseFinally, values, pluck, upperFirst} = require './utils'
 
 class Relation
@@ -104,6 +104,35 @@ class Relation
             when 'detach'
                 @_destroyDetach model, options
 
+    _destroyCascade: (model, options) ->
+        if @constructor.multiple
+            model[@name]().fetch(options).then (related) ->
+                related.forEach (obj) ->
+                    key = "#{obj.tableName}:#{obj.id}"
+                    unless options.destroyingCache[key]?
+                        options.destroyingCache[key] = obj.destroy(options)
+        else
+            model[@name]().fetch(options).then (obj) ->
+                if obj?
+                    key = "#{obj.tableName}:#{obj.id}"
+                    options.destroyingCache[key] = obj.destroy(options)
+
+    _destroyReject: (model, options) ->
+        if @constructor.multiple
+            model[@accessor].fetch(options).then (related) ->
+                for obj in related when "#{obj.tableName}:#{obj.id}" not of options.destroyingCache
+                    return Rejected new Error("destroy was reject")
+        else
+            model[@name]().fetch(options).then (obj) ->
+                if obj and "#{obj.tableName}:#{obj.id}" not of options.destroyingCache
+                    Rejected new Error('destroy rejected')
+
+    _destroyDetach: (model, options) ->
+        if @constructor.multiple
+            model[@accessor].assign [], options
+        else
+            model[@accessor].assign null, options
+
     # TODO: apply withPivot
     # TODO: auto-discover withPivot columns from through models schema
     _applyThrough: (builder) ->
@@ -157,16 +186,6 @@ class HasOne extends Relation
 
     @injectedMethods: require './relations/has_one'
 
-    _destroyCascade: (model, options) ->
-        model[@name]().fetch(options).then (obj) -> obj?.destroy(options)
-
-    _destroyReject: (model, options) ->
-        model[@name]().fetch(options).then (obj) ->
-            Rejected new Error('destroy rejected') if obj
-
-    _destroyDetach: (model, options) ->
-        model[@accessor].assign null, options
-
     _createRelation: (cls) ->
         related = @relatedModel
         foreignKey = @options.foreignKey
@@ -182,13 +201,6 @@ class BelongsTo extends Relation
         schema.push IntField "#{@name}_id"
 
     @injectedMethods: require './relations/belongs_to'
-
-    _destroyCascade: (model, options) ->
-        model[@name]().fetch(options).then (obj) -> obj?.destroy(options)
-
-    _destroyReject: (model, options) ->
-        model[@name]().fetch(options).then (obj) ->
-            Rejected new Error('destroy rejected') if obj
 
     _destroyDetach: (model, options) ->
 
@@ -238,20 +250,6 @@ class HasMany extends Relation
 
     @injectedMethods: require './relations/has_many'
 
-    _destroyCascade: (model, options) ->
-        model[@name]().fetch(options).then (related) ->
-            related.forEach (obj) ->
-                key = "#{obj.tableName}:#{obj.id}"
-                unless options.destroyingCache[key]?
-                    options.destroyingCache[key] = obj.destroy(options)
-
-    _destroyReject: (model, options) ->
-        model[@accessor].count(options).then (count) ->
-            Rejected new Error("destroy was reject") if count > 0
-
-    _destroyDetach: (model, options) ->
-        model[@accessor].assign [], options
-
     _createRelation: (cls) ->
         related = @relatedModel
         foreignKey = @options.foreignKey
@@ -266,6 +264,17 @@ class BelongsToMany extends Relation
 
     @injectedMethods: require './relations/belongs_to_many'
 
+    _destroyCascade: (model, options) ->
+        accessor = @accessor
+        model[@name]().fetch(options).then (related) ->
+            related.forEach (obj) ->
+                key = "#{obj.tableName}:#{obj.id}"
+                unless options.destroyingCache[key]?
+                    pending = model[accessor]
+                        .detach(obj, options)
+                        .then -> obj.destroy(options)
+                    options.destroyingCache[key] = pending
+
     _createRelation: (cls) ->
         related = @relatedModel
         table = @options.table
@@ -276,6 +285,7 @@ class BelongsToMany extends Relation
 class MorphOne extends Relation
     constructor: (model, polymorphicName, options = {}) ->
         return new MorphOne(arguments...) unless this instanceof MorphOne
+        throw new Error('polymorphicName should be string') unless typeof polymorphicName is 'string'
         super model, options
         @polymorphicName = polymorphicName
 
@@ -293,6 +303,7 @@ class MorphMany extends Relation
 
     constructor: (model, polymorphicName, options = {}) ->
         return new MorphMany(arguments...) unless this instanceof MorphMany
+        throw new Error('polymorphicName should be string') unless typeof polymorphicName is 'string'
         super model, options
         @polymorphicName = polymorphicName
 
@@ -313,6 +324,15 @@ class MorphTo extends Relation
         @polymorphicName = polymorphicName
 
     @injectedMethods: require './relations/morph_to'
+
+    contributeToSchema: (schema) ->
+        super
+        if @options.columnNames
+            schema.push IntField "#{@options.polymorphicName[0]}_id"
+            schema.push StringField "#{@options.polymorphicName[1]}_type"
+        else
+            schema.push IntField "#{@polymorphicName}_id"
+            schema.push StringField "#{@polymorphicName}_type"
 
     _createRelation: (cls) ->
         args = [@polymorphicName]

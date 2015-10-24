@@ -161,7 +161,7 @@ describe "Relations", ->
             [alice, _] = yield fixtures.alice()
             yield alice.destroy().should.be.rejected
             yield alice.$profile.assign null
-            alice.destroy()
+            alice.destroy().should.be.fulfilled
 
         it 'can detach dependent models on destroy', co ->
             User.schema [

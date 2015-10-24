@@ -16,6 +16,20 @@ utils =
         for f in fields when f of obj
             result[f] = obj[f]
         result
+    clone: (obj, options = {}) ->
+        res = {}
+        if options.only
+            for k in options.only
+                res[k] = obj[k]
+        else
+            for k of obj
+                res[k] = obj[k]
+
+        if options.expect
+            for k in options.expect
+                delete res[k]
+
+        res
     upperFirst: (str) -> str[0].toUpperCase() + str[1..]
     forceTransaction: (transaction, options, callback) ->
         options ?= {}

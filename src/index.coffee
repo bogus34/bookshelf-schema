@@ -99,7 +99,9 @@ contributeToModel = (cls, entities) ->
     undefined
 
 handleDestroy = (model, options = {}) ->
-    options.destroyingCache = {}
+    # somehow query passed with options will break some of subsequent queries
+    options = utils.clone options, expect: ['query']
+    options.destroyingCache = "#{model.tableName}:#{model.id}": Fulfilled()
     handled = (e.onDestroy?(model, options) for e in @constructor.__schema)
     Promise.all(handled)
     .then -> Promise.all utils.values(options.destroyingCache)
