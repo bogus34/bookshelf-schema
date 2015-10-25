@@ -78,48 +78,42 @@ describe "Relations", ->
 
             class Tag extends db.Model
                 tableName: 'tags'
-                @schema [
-                    MorphTo 'tagable', [User]
-                ]
 
         afterEach -> init.truncate 'users', 'tags'
 
         it 'can cascade-destroy dependent models', co ->
-            User.schema [
-                MorphOne Tag, 'tagable', onDestroy: 'cascade'
+            Tag.schema [
+                MorphTo 'tagable', [User], onDestroy: 'cascade'
             ]
 
             [alice, tag] = yield fixtures.alice()
-            tag2 = yield new Tag(name: 'redhead').save()
+            bob = yield new User(username: 'bob').save()
 
-            yield alice.destroy().should.be.fulfilled
+            yield tag.destroy().should.be.fulfilled
 
-            [tag, tag2] = yield [
-                new Tag(id: tag.id).fetch()
-                new Tag(id: tag2.id).fetch()
+            [alice, bob] = yield [
+                new User(id: alice.id).fetch()
+                new User(id: bob.id).fetch()
             ]
 
-            expect(tag).to.be.null
-            expect(tag2).not.to.be.null
+            expect(alice).to.be.null
+            expect(bob).not.to.be.null
 
         it 'can reject destroy when there id dependent model', co ->
-            User.schema [
-                MorphOne Tag, 'tagable', onDestroy: 'reject'
+            Tag.schema [
+                MorphTo 'tagable', [User], onDestroy: 'reject'
             ]
 
-            [alice, _] = yield fixtures.alice()
-            yield alice.destroy().should.be.rejected
-            yield alice.$tag.assign null
-            alice.destroy().should.be.fulfilled
+            [_, tag] = yield fixtures.alice()
+            yield tag.destroy().should.be.rejected
+            yield tag.$tagable.assign null
+            tag.destroy().should.be.fulfilled
 
         it 'can detach dependent models on destroy', co ->
-            User.schema [
-                MorphOne Tag, 'tagable', onDestroy: 'detach'
+            Tag.schema [
+                # this actually a no-op
+                MorphTo 'tagable', [Tag], onDestroy: 'detach'
             ]
 
-            [alice, tag] = yield fixtures.alice()
-            yield alice.destroy().should.be.fulfilled
-
-            tag = yield new Tag(id: tag.id).fetch()
-            expect(tag.tagable_id).to.be.null
-            expect(tag.tagable_type).to.be.null
+            [_, tag] = yield fixtures.alice()
+            yield tag.destroy().should.be.fulfilled

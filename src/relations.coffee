@@ -291,6 +291,8 @@ class MorphOne extends Relation
 
     @injectedMethods: require './relations/morph_one'
 
+    _destroyDetach: (model, options) ->
+
     _createRelation: (cls) ->
         related = @relatedModel
         name = @polymorphicName
@@ -333,6 +335,24 @@ class MorphTo extends Relation
         else
             schema.push IntField "#{@polymorphicName}_id"
             schema.push StringField "#{@polymorphicName}_type"
+
+    _destroyReject: (model, options) ->
+        polymorphicId = if @options.columnNames
+            @options.columnNames[0]
+        else
+            "#{@polymorphicName}_id"
+        polymorphicType = if @options.columnNames
+            @options.columnNames[1]
+        else
+            "#{@polymorphicName}_type"
+
+        if model.get(polymorphicId)? \
+        and model.get(polymorphicType)?
+            model[@name]().fetch(options).then (obj) ->
+                if obj and "#{obj.tableName}:#{obj.id}" not of options.destroyingCache
+                    Rejected new Error('destroy rejected')
+
+    _destroyDetach: ->
 
     _createRelation: (cls) ->
         args = [@polymorphicName]
