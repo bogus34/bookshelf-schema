@@ -76,7 +76,7 @@ class Relation
             @_createProperty(cls)
 
     createRelation: (cls) ->
-        relation = @_createRelation(cls)
+        relation = @_createRelation()
         relation = @_applyQuery(relation)
         relation = @_applyThrough(relation)
 
@@ -186,7 +186,7 @@ class HasOne extends Relation
 
     @injectedMethods: require './relations/has_one'
 
-    _createRelation: (cls) ->
+    _createRelation: ->
         related = @relatedModel
         foreignKey = @options.foreignKey
         -> @hasOne related, foreignKey
@@ -204,7 +204,7 @@ class BelongsTo extends Relation
 
     _destroyDetach: (model, options) ->
 
-    _createRelation: (cls) ->
+    _createRelation: ->
         related = @relatedModel
         foreignKey = @options.foreignKey
         -> @belongsTo related, foreignKey
@@ -250,7 +250,7 @@ class HasMany extends Relation
 
     @injectedMethods: require './relations/has_many'
 
-    _createRelation: (cls) ->
+    _createRelation: ->
         related = @relatedModel
         foreignKey = @options.foreignKey
         -> @hasMany related, foreignKey
@@ -275,7 +275,7 @@ class BelongsToMany extends Relation
                         .then -> obj.destroy(options)
                     options.destroyingCache[key] = pending
 
-    _createRelation: (cls) ->
+    _createRelation: ->
         related = @relatedModel
         table = @options.table
         foreignKey = @options.foreignKey
@@ -293,7 +293,7 @@ class MorphOne extends Relation
 
     _destroyDetach: (model, options) ->
 
-    _createRelation: (cls) ->
+    _createRelation: ->
         related = @relatedModel
         name = @polymorphicName
         columnNames = @options.columnNames
@@ -311,7 +311,7 @@ class MorphMany extends Relation
 
     @injectedMethods: require './relations/morph_many'
 
-    _createRelation: (cls) ->
+    _createRelation: ->
         related = @relatedModel
         name = @polymorphicName
         columnNames = @options.columnNames
@@ -354,7 +354,7 @@ class MorphTo extends Relation
 
     _destroyDetach: ->
 
-    _createRelation: (cls) ->
+    _createRelation: ->
         args = [@polymorphicName]
         args.push @options.columnNames if @options.columnNames
         args = args.concat @relatedModel
