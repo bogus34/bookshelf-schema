@@ -104,6 +104,8 @@ describe "Relations", ->
             ]
 
     describe 'onDestroy', ->
+        {values} = require '../../src/utils'
+
         beforeEach ->
             class Group extends db.Model
                 tableName: 'groups'
@@ -113,7 +115,7 @@ describe "Relations", ->
 
         afterEach -> init.truncate 'users', 'groups', 'groups_users'
 
-        it 'can cascade-destroy dependent models', co ->
+        it 'blah can cascade-destroy dependent models', co ->
             User.schema [
                 BelongsToMany Group, onDestroy: 'cascade'
             ]
@@ -128,7 +130,7 @@ describe "Relations", ->
             yield alice.destroy()
 
             yield [
-                db.knex('groups_users').where(user_id: aliceId).count('*').should.become [{'count(*)': 0}]
+                db.knex('groups_users').where(user_id: aliceId).count('*').map( (a) -> parseInt(values(a)[0])).should.become [0]
                 Group.forge(id: groups[2].id).fetch().should.eventually.have.property 'id'
             ]
 
@@ -159,4 +161,4 @@ describe "Relations", ->
             yield fixtures.connect alice, groups[..1]
             yield alice.destroy().should.be.fulfilled
 
-            db.knex('groups_users').where(user_id: aliceId).count('*').should.become [{'count(*)': 0}]
+            db.knex('groups_users').where(user_id: aliceId).count('*').map( (a) -> parseInt(values(a)[0])).should.become [0]
