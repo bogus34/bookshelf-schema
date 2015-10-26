@@ -1,31 +1,30 @@
+###
+#
+#  User = db.Model.extend({
+#      tableName: 'users'
+#  }, {
+#      schema: [
+#          StringField 'username'
+#          IntField 'age'
+#          EmailField 'email'
+#
+#          HasMany 'photos', Photo, onDestroy: 'cascade'
+#      ]
+#  });
+#
+#  class User extends db.Model.extend
+#      tableName: 'users'
+#      @schema [
+#          StringField 'username'
+#          IntField 'age'
+#          EmailField 'email'
+#
+#          HasMany 'photos', Photo, onDestroy: 'cascade'
+#      ]
+#
+###
+
 CheckIt = require 'checkit'
-
-###
-#
-# User = db.Model.extend({
-#     tableName: 'users'
-# }, {
-#     schema: [
-#         StringField 'username'
-#         IntField 'age'
-#         EmailField 'email'
-#
-#         HasMany 'photos', Photo, onDestroy: 'cascade'
-#     ]
-# });
-#
-# class User extends db.Model.extend
-#     tableName: 'users'
-#     @schema [
-#         StringField 'username'
-#         IntField 'age'
-#         EmailField 'email'
-#
-#         HasMany 'photos', Photo, onDestroy: 'cascade'
-#     ]
-#
-###
-
 utils = require './utils'
 
 plugin = (options = {}) -> (db) ->

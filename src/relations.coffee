@@ -1,48 +1,48 @@
 ###
 #
-# BelongsTo 'user', User
-#     leads to
-#     user: -> @belongsTo User
+#  BelongsTo 'user', User
+#      leads to
+#      user: -> @belongsTo User
 #
-# BelongsTo User
-#     leads to
-#     <User.name.toLowerCase()>: -> @belongsTo User
+#  BelongsTo User
+#      leads to
+#      <User.name.toLowerCase()>: -> @belongsTo User
 #
-# BelongsTo 'user', User, -> @where(username: 'foo')
-#     leads to
-#     user: -> relation = @belongsTo(User); f.call(relation)
+#  BelongsTo 'user', User, -> @where(username: 'foo')
+#      leads to
+#      user: -> relation = @belongsTo(User); f.call(relation)
 #
-# class User extends db.Model
-#     tableName: 'users'
-#     @schema [
-#         HasMany Photo
-#     ]
+#  class User extends db.Model
+#      tableName: 'users'
+#      @schema [
+#          HasMany Photo
+#      ]
 #
-# class Photo extends db.Model
-#     tableName: 'photos'
-#     @schema [
-#         BelongsTo User
-#     ]
+#  class Photo extends db.Model
+#      tableName: 'photos'
+#      @schema [
+#          BelongsTo User
+#      ]
 #
-# Photo.forge(id: 1).fetch(withRelated: 'user').then (photo) ->
-#     photo.user                              # function
-#     photo.related('user')                   # Collection
-#     photo.$user                             # Collection
-#     photo.$user.assign(user)                # set user_id to user.id and save
+#  Photo.forge(id: 1).fetch(withRelated: 'user').then (photo) ->
+#      photo.user                              # function
+#      photo.related('user')                   # Collection
+#      photo.$user                             # Collection
+#      photo.$user.assign(user)                # set user_id to user.id and save
 #
-# User.forge(id: 1).fetch(withRelated: 'photos').then (user) ->
-#     user.photos                             # function
-#     user.related('photos')                  # Collection
-#     user.$photos                            # Collection
-#     user.$photos.assign(...)                # detach all photos and attach listed
-#     user.$photos.attach(...)                # attach listed photos and save them
-#     user.$photos.detach(...)                # detach listed photos
+#  User.forge(id: 1).fetch(withRelated: 'photos').then (user) ->
+#      user.photos                             # function
+#      user.related('photos')                  # Collection
+#      user.$photos                            # Collection
+#      user.$photos.assign(...)                # detach all photos and attach listed
+#      user.$photos.attach(...)                # attach listed photos and save them
+#      user.$photos.detach(...)                # detach listed photos
 #
-# class User extends db.Model
-#     tableName: 'users'
-#     @schema [
-#         HasMany Photo, onDestroy: (cascade|cascade direct|detach|detach direct|reject|ignore)
-#     ]
+#  class User extends db.Model
+#      tableName: 'users'
+#      @schema [
+#          HasMany Photo, onDestroy: (cascade|cascade direct|detach|detach direct|reject|ignore)
+#      ]
 #
 ###
 
