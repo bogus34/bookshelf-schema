@@ -43,6 +43,7 @@ plugin = (options = {}) -> (db) ->
     replaceFormat Model
     replaceParse Model
     replaceDestroy Model
+    applyScopes Model
 
 applySchema = (schema) ->
     @__schema = buildSchema schema
@@ -88,6 +89,18 @@ replaceDestroy = (Model) ->
     Model::destroy = (options) ->
         utils.forceTransaction Model.transaction, options, (options) =>
             originalDestroy.call this, options
+
+applyScopes = (Model) ->
+    for method in ['all', 'fetch']
+        do (original = Model::[method]) ->
+            Model::[method] = ->
+                if @_appliedScopes
+                    @query (qb) =>
+                        for [name, scope, args] in @_appliedScopes
+                            scope.apply(qb, args)
+                original.apply this, arguments
+
+    undefined
 
 buildSchema = (entities) ->
     schema = []
