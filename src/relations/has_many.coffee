@@ -44,6 +44,7 @@ module.exports =
             catch e
                 Rejected e
 
+    # TODO: fire 'attaching' and 'attached' events
     attach: (model, relation, list, options) ->
         return unless list?
         list = [list] unless list instanceof Array
@@ -79,6 +80,7 @@ module.exports =
     _attachOne: (model, relation, obj, options) ->
         obj.set(@relatedData.key('foreignKey'), model.id).save(null, options)
 
+    # TODO: fire 'detaching' and 'detached' events
     detach: (model, relation, list, options) ->
         return unless list?
         list = [list] unless list instanceof Array
