@@ -33,143 +33,144 @@ describe "Relations", ->
         yield [ init.users(), init.profiles() ]
 
     describe 'HasOne', ->
-        beforeEach ->
-            class Profile extends db.Model
-                tableName: 'profiles'
+        describe 'plain', ->
+            beforeEach ->
+                class Profile extends db.Model
+                    tableName: 'profiles'
 
-                @schema [
-                    StringField 'greetings'
-                    IntField 'user_id'
+                    @schema [
+                        StringField 'greetings'
+                        IntField 'user_id'
+                    ]
+
+                class User extends db.Model
+                    tableName: 'users'
+
+                    @schema [
+                        StringField 'username'
+                        HasOne Profile
+                    ]
+
+            afterEach -> init.truncate 'users', 'profiles'
+
+            it 'creates accessor', co ->
+                [alice, _] = yield fixtures.alice()
+                alice.profile.should.be.a 'function'
+                yield alice.load('profile')
+                alice.$profile.should.be.an.instanceof db.Model
+                alice.$profile.user_id.should.equal alice.id
+
+            it 'can assign model', co ->
+                [alice, profile] = yield fixtures.alice()
+
+                profile2 = yield new Profile(greetings: 'Hi!').save()
+                yield alice.$profile.assign profile2
+                profile = yield Profile.forge(id: profile.id).fetch()
+                alice = yield User.forge(id: alice.id).fetch(withRelated: 'profile')
+
+                expect(profile.user_id).to.be.null
+                alice.$profile.id.should.equal profile2.id
+
+            it 'can assign plain object', co ->
+                [alice, profile] = yield fixtures.alice()
+
+                yield alice.$profile.assign {greetings: 'Hi!'}
+                [alice, profile] = yield [
+                    User.forge(id: alice.id).fetch(withRelated: 'profile')
+                    Profile.forge(id: profile.id).fetch()
                 ]
 
-            class User extends db.Model
-                tableName: 'users'
+                alice.$profile.greetings.should.equal 'Hi!'
+                expect(profile.user_id).to.be.null
 
-                @schema [
-                    StringField 'username'
-                    HasOne Profile
+            it 'can assign by id', co ->
+                [alice, profile] = yield fixtures.alice()
+
+                profile2 = yield new Profile(greetings: 'Hi!').save()
+                yield alice.$profile.assign profile2.id
+                profile = yield Profile.forge(id: profile.id).fetch()
+                alice = yield User.forge(id: alice.id).fetch(withRelated: 'profile')
+
+                expect(profile.user_id).to.be.null
+                alice.$profile.id.should.equal profile2.id
+
+        describe 'through', ->
+            before -> init.inviters()
+
+            beforeEach ->
+                class Inviter extends db.Model
+                    tableName: 'inviters'
+
+                class User extends db.Model
+                    tableName: 'users'
+
+                    @schema [
+                        StringField 'username'
+                        HasOne User, name: 'invited', through: Inviter
+                    ]
+
+                Inviter.schema [
+                    StringField 'greeting'
                 ]
 
-        afterEach -> init.truncate 'users', 'profiles'
+            afterEach -> init.truncate 'users', 'inviters'
 
-        it 'creates accessor', co ->
-            [alice, _] = yield fixtures.alice()
-            alice.profile.should.be.a 'function'
-            yield alice.load('profile')
-            alice.$profile.should.be.an.instanceof db.Model
-            alice.$profile.user_id.should.equal alice.id
+            it 'can access related model', co ->
+                [alice, bob, inviter] = yield fixtures.aliceAndBob()
+                yield alice.load('invited')
+                alice.$invited.should.be.an.instanceof User
+                alice.$invited.id.should.equal bob.id
 
-        it 'can assign model', co ->
-            [alice, profile] = yield fixtures.alice()
+        describe 'onDestroy', ->
+            beforeEach ->
+                class Profile extends db.Model
+                    tableName: 'profiles'
 
-            profile2 = yield new Profile(greetings: 'Hi!').save()
-            yield alice.$profile.assign profile2
-            profile = yield Profile.forge(id: profile.id).fetch()
-            alice = yield User.forge(id: alice.id).fetch(withRelated: 'profile')
+                    @schema [
+                        StringField 'greetings'
+                        IntField 'user_id'
+                    ]
 
-            expect(profile.user_id).to.be.null
-            alice.$profile.id.should.equal profile2.id
+                class User extends db.Model
+                    tableName: 'users'
 
-        it 'can assign plain object', co ->
-            [alice, profile] = yield fixtures.alice()
+            afterEach -> init.truncate 'users', 'profiles'
 
-            yield alice.$profile.assign {greetings: 'Hi!'}
-            [alice, profile] = yield [
-                User.forge(id: alice.id).fetch(withRelated: 'profile')
-                Profile.forge(id: profile.id).fetch()
-            ]
-
-            alice.$profile.greetings.should.equal 'Hi!'
-            expect(profile.user_id).to.be.null
-
-        it 'can assign by id', co ->
-            [alice, profile] = yield fixtures.alice()
-
-            profile2 = yield new Profile(greetings: 'Hi!').save()
-            yield alice.$profile.assign profile2.id
-            profile = yield Profile.forge(id: profile.id).fetch()
-            alice = yield User.forge(id: alice.id).fetch(withRelated: 'profile')
-
-            expect(profile.user_id).to.be.null
-            alice.$profile.id.should.equal profile2.id
-
-    describe 'through', ->
-        before -> init.inviters()
-
-        beforeEach ->
-            class Inviter extends db.Model
-                tableName: 'inviters'
-
-            class User extends db.Model
-                tableName: 'users'
-
-                @schema [
-                    StringField 'username'
-                    HasOne User, name: 'invited', through: Inviter
+            it 'can cascade-destroy dependent models', co ->
+                User.schema [
+                    HasOne Profile, onDestroy: 'cascade'
                 ]
 
-            Inviter.schema [
-                StringField 'greeting'
-            ]
+                [alice, profile] = yield fixtures.alice()
+                profile2 = yield new Profile(greetings: 'Hi!').save()
 
-        afterEach -> init.truncate 'users', 'inviters'
+                yield alice.destroy().should.be.fulfilled
 
-        it 'can access related model', co ->
-            [alice, bob, inviter] = yield fixtures.aliceAndBob()
-            yield alice.load('invited')
-            alice.$invited.should.be.an.instanceof User
-            alice.$invited.id.should.equal bob.id
-
-    describe 'onDestroy', ->
-        beforeEach ->
-            class Profile extends db.Model
-                tableName: 'profiles'
-
-                @schema [
-                    StringField 'greetings'
-                    IntField 'user_id'
+                [profile, profile2] = yield [
+                    new Profile(id: profile.id).fetch()
+                    new Profile(id: profile2.id).fetch()
                 ]
 
-            class User extends db.Model
-                tableName: 'users'
+                expect(profile).to.be.null
+                expect(profile2).not.to.be.null
 
-        afterEach -> init.truncate 'users', 'profiles'
+            it 'can reject destroy when there id dependent model', co ->
+                User.schema [
+                    HasOne Profile, onDestroy: 'reject'
+                ]
 
-        it 'can cascade-destroy dependent models', co ->
-            User.schema [
-                HasOne Profile, onDestroy: 'cascade'
-            ]
+                [alice, _] = yield fixtures.alice()
+                yield alice.destroy().should.be.rejected
+                yield alice.$profile.assign null
+                alice.destroy().should.be.fulfilled
 
-            [alice, profile] = yield fixtures.alice()
-            profile2 = yield new Profile(greetings: 'Hi!').save()
+            it 'can detach dependent models on destroy', co ->
+                User.schema [
+                    HasOne Profile, onDestroy: 'detach'
+                ]
 
-            yield alice.destroy().should.be.fulfilled
+                [alice, profile] = yield fixtures.alice()
+                yield alice.destroy().should.be.fulfilled
 
-            [profile, profile2] = yield [
-                new Profile(id: profile.id).fetch()
-                new Profile(id: profile2.id).fetch()
-            ]
-
-            expect(profile).to.be.null
-            expect(profile2).not.to.be.null
-
-        it 'can reject destroy when there id dependent model', co ->
-            User.schema [
-                HasOne Profile, onDestroy: 'reject'
-            ]
-
-            [alice, _] = yield fixtures.alice()
-            yield alice.destroy().should.be.rejected
-            yield alice.$profile.assign null
-            alice.destroy().should.be.fulfilled
-
-        it 'can detach dependent models on destroy', co ->
-            User.schema [
-                HasOne Profile, onDestroy: 'detach'
-            ]
-
-            [alice, profile] = yield fixtures.alice()
-            yield alice.destroy().should.be.fulfilled
-
-            profile = yield new Profile(id: profile.id).fetch()
-            expect(profile.user_id).to.be.null
+                profile = yield new Profile(id: profile.id).fetch()
+                expect(profile.user_id).to.be.null
