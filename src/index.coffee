@@ -113,7 +113,7 @@ contributeToModel = (cls, entities) ->
 handleDestroy = (model, options = {}) ->
     # somehow query passed with options will break some of subsequent queries
     options = utils.clone options, expect: ['query']
-    options.destroyingCache = "#{model.tableName}:#{model.id}": Fulfilled()
+    options.destroyingCache = "#{model.tableName}:#{model.id}": utils.Fulfilled()
     handled = (e.onDestroy?(model, options) for e in @constructor.__schema)
     Promise.all(handled)
     .then -> Promise.all utils.values(options.destroyingCache)
@@ -129,8 +129,6 @@ initSchema = ->
         break
     undefined
 
-{Fulfilled} = require './utils'
-
 CheckItOptions = ->
     memo = {}
     for k in ['language', 'labels', 'messages']
@@ -139,7 +137,7 @@ CheckItOptions = ->
     memo
 
 validate = (self, attrs) ->
-    return Fulfilled() unless @constructor.__bookshelf_schema_options.validation
+    return utils.Fulfilled() unless @constructor.__bookshelf_schema_options.validation
     json = @toJSON(validating: true)
     validations = @constructor.__bookshelf_schema?.validations || []
     modelValidations = @constructor.__bookshelf_schema?.modelValidations
