@@ -47,33 +47,34 @@ module.exports =
     attach: (model, relation, list, options) ->
         return unless list?
         list = [list] unless list instanceof Array
-        try
-            unloaded = []
-            created = []
-            models = []
-            for obj in list
-                switch
-                    when typeof obj is 'number'
-                        unloaded.push obj
-                    when obj.constructor is Object
-                        created.push @model.forge(obj)
-                    when obj instanceof @model
-                        models.push obj
-                    else
-                        throw new Error("Can't attach #{obj} to #{model} as a #{relation.name}")
+        forceTransaction relation.model.transaction, options, (options) =>
+            try
+                unloaded = []
+                created = []
+                models = []
+                for obj in list
+                    switch
+                        when typeof obj is 'number'
+                            unloaded.push obj
+                        when obj.constructor is Object
+                            created.push @model.forge(obj)
+                        when obj instanceof @model
+                            models.push obj
+                        else
+                            throw new Error("Can't attach #{obj} to #{model} as a #{relation.name}")
 
-            loadUnloaded = if unloaded.length is 0
-                Fulfilled @model.collection()
-            else
-                @model.collection().where(@model.idAttribute, 'in', unloaded).fetch(options)
+                loadUnloaded = if unloaded.length is 0
+                    Fulfilled @model.collection()
+                else
+                    @model.collection().where(@model.idAttribute, 'in', unloaded).fetch(options)
 
-            loadUnloaded.then (unloaded) =>
-                unloaded = unloaded.models
-                pending = for obj in unloaded.concat(created, models)
-                    @_attachOne obj, options
-                Promise.all pending
-        catch e
-            Rejected e
+                loadUnloaded.then (unloaded) =>
+                    unloaded = unloaded.models
+                    pending = for obj in unloaded.concat(created, models)
+                        @_attachOne obj, options
+                    Promise.all pending
+            catch e
+                Rejected e
 
     _attachOne: (model, relation, obj, options) ->
         obj.set(@relatedData.key('foreignKey'), model.id).save(null, options)
@@ -81,30 +82,31 @@ module.exports =
     detach: (model, relation, list, options) ->
         return unless list?
         list = [list] unless list instanceof Array
-        try
-            unloaded = []
-            models = []
-            for obj in list
-                switch
-                    when typeof obj is 'number'
-                        unloaded.push obj
-                    when obj instanceof @model
-                        models.push obj
-                    else
-                        throw new Error("Can't detach #{obj} from #{model} #{relation.name}")
+        forceTransaction relation.model.transaction, options, (options) =>
+            try
+                unloaded = []
+                models = []
+                for obj in list
+                    switch
+                        when typeof obj is 'number'
+                            unloaded.push obj
+                        when obj instanceof @model
+                            models.push obj
+                        else
+                            throw new Error("Can't detach #{obj} from #{model} #{relation.name}")
 
-            loadUnloaded = if unloaded.length is 0
-                Fulfilled @model.collection()
-            else
-                @model.collection().where(@model.idAttribute, 'in', unloaded).fetch(options)
+                loadUnloaded = if unloaded.length is 0
+                    Fulfilled @model.collection()
+                else
+                    @model.collection().where(@model.idAttribute, 'in', unloaded).fetch(options)
 
-            loadUnloaded.then (unloaded) =>
-                unloaded = unloaded.models
-                pending = for obj in unloaded.concat(models)
-                    @_detachOne obj, options
-                Promise.all pending
-        catch e
-            Rejected e
+                loadUnloaded.then (unloaded) =>
+                    unloaded = unloaded.models
+                    pending = for obj in unloaded.concat(models)
+                        @_detachOne obj, options
+                    Promise.all pending
+            catch e
+                Rejected e
 
     _detachOne: (model, relation, obj, options) ->
         obj.set(@relatedData.key('foreignKey'), null).save(null, options)
