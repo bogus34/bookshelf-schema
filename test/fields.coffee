@@ -17,7 +17,7 @@ describe "Fields", ->
         db = init.init()
         init.users()
 
-    afterEach -> db.knex('users').truncate()
+    afterEach -> init.truncate 'users'
 
     describe 'StringField', ->
         it 'validates min_length and max_length', co ->
