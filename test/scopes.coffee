@@ -140,9 +140,20 @@ describe "Scopes", ->
 
             it 'scope in relation definition', co ->
                 users = yield new Group(name: 'users').fetch()
+                yield users.$users.count().should.become 2
                 yield users.$flaggedUsers.count().should.become 1
                 usersUsers = yield users.$flaggedUsers.fetch()
                 usersUsers.should.be.an.instanceof db.Collection
                 usersUsers.length.should.equal 1
                 usersUsers.at(0).username.should.equal 'bob'
 
+        it "doesn't affects cached relation", co ->
+            group = yield new Group(name: 'users').fetch()
+            flagged = yield group.$users.flagged().fetch()
+            all = yield group.$users.fetch()
+            flagged2 = yield group.$users.flagged().fetch()
+
+            flagged.length.should.equal 1
+            all.length.should.equal 2
+            flagged2.length.should.equal 1
+            group.$users.length.should.equal 2

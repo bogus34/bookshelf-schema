@@ -48,8 +48,9 @@ class Scope
         unless @name of to
             self = this
             to[@name] = (args...) ->
-                self.apply(this, args)
-                this
+                obj = if @_appliedScopes then this else @clone()
+                self.apply(obj, args)
+                obj
 
     createScope: ->
         self = this
