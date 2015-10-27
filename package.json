@@ -30,6 +30,6 @@
     "pluralize": "^1.2.1"
   },
   "peerDependencies": {
-    "bookshelf": "^0.8.2",    
+    "bookshelf": "^0.8.2"
   }
 }
