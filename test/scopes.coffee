@@ -138,8 +138,9 @@ describe "Scopes", ->
                 wheel = yield new Group(name: 'wheel').fetch()
                 wheel.$users.count().should.become 1
 
-            it.skip 'scope in relation definition', co ->
+            it 'scope in relation definition', co ->
                 users = yield new Group(name: 'users').fetch()
+                yield users.$flaggedUsers.count().should.become 1
                 usersUsers = yield users.$flaggedUsers.fetch()
                 usersUsers.should.be.an.instanceof db.Collection
                 usersUsers.length.should.equal 1

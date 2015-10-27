@@ -2,6 +2,7 @@
 
 # Originally posted by @nathggns at https://github.com/tgriesser/bookshelf/issues/126
 module.exports = (object, options) ->
+    object._applyScopes?()
     sync = object.sync(options)
 
     relatedData = sync.syncing.relatedData

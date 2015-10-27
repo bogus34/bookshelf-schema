@@ -151,6 +151,18 @@ plugin = (options = {}) -> (db) ->
                 for e in target.__schema when e.liftScope?
                     e.liftScope(to)
 
+    class Collection extends db.Collection
+        for method in ['fetch', 'fetchOne']
+            do (method) ->
+                Collection::[method] = ->
+                    @_applyScopes()
+                    super
+
+        _applyScopes: ->
+            if @_appliedScopes
+                @query (qb) => scope.apply(qb, args) for [name, scope, args] in @_appliedScopes
+
     db.Model = Model
+    db.Collection = Collection
 
 module.exports = plugin
