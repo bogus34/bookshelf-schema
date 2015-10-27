@@ -89,15 +89,41 @@ replaceDestroy = (Model) ->
         utils.forceTransaction Model.transaction, options, (options) =>
             originalDestroy.call this, options
 
+_applyScopes = ->
+    if @_appliedScopes
+        @query (qb) =>
+            for [name, scope, args] in @_appliedScopes
+                scope.apply(qb, args)
+
+liftRelatedScopes = (to) ->
+    target = to.model or to.relatedData.target
+    if target and target.__schema?
+        for e in target.__schema when e.liftScope?
+            e.liftScope(to)
+
+unscoped = ->
+    @_appliedScopes = []
+    this
+
+relationMethods = ['hasMany', 'hasOne', 'belongsToMany',
+    'morphOne', 'morphMany', 'belongsTo', 'through']
 applyScopes = (Model) ->
     for method in ['all', 'fetch']
         do (original = Model::[method]) ->
             Model::[method] = ->
-                if @_appliedScopes
-                    @query (qb) =>
-                        for [name, scope, args] in @_appliedScopes
-                            scope.apply(qb, args)
+                _applyScopes.call this
                 original.apply this, arguments
+
+    Model::unscoped = -> unscoped
+    Model.unscoped = -> @forge().unscoped()
+
+    for method in relationMethods
+        do (original = Model::[method]) ->
+            Model::[method] = ->
+                related = original.apply this, arguments
+                liftRelatedScopes.call this, related
+                related.unscoped = unscoped
+                related
 
     undefined
 
@@ -127,6 +153,8 @@ initSchema = ->
         @on 'destroying', handleDestroy, this
         # _handleDestroy will iterate over all schema entities so we break here
         break
+    if @constructor.__bookshelf_schema?.defaultScope
+        @constructor.__bookshelf_schema.defaultScope.apply(this)
     undefined
 
 CheckItOptions = ->

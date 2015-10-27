@@ -4,6 +4,8 @@
 #      tableName: 'users'
 #
 #      @schema [
+#          BelongsToMany Group, query: -> @userland()
+#
 #          Scope 'active', -> @where(active: true)
 #          Scope 'withEmail', -> @where('email is not null')
 #          Scope 'activeWithEmail', -> @active().withEmail()
@@ -15,12 +17,10 @@
 #  User.forge(username: 'alice').flagged().fetchAll()
 #  User.unscoped().active().fetchAll()
 #
-#  class Group extends db.Model
-#      tableName: 'groups'
-#
-#      @schema [
-#          BelongsToMany User, query: -> @active()
-#      ]
+#  alice = User.forge(...).fetch()
+#  alice.$groups.named('wheel').fetchOne()
+#  alice.$groups.unscoped().fetch()
+#  alice.$groups.unscoped().count()
 #
 ###
 
@@ -33,20 +33,34 @@ class Scope
     contributeToSchema: (schema) -> schema.push this
     contributeToModel: (cls) ->
         @model = cls
-        cls::[@name] = @createScope()
-        cls[@name] = @createStaticScope()
+        unless @name is 'default'
+            cls::[@name] = @createScope()
+            cls[@name] = @createStaticScope()
+        else
+            @model.__bookshelf_schema ?= {}
+            @model.__bookshelf_schema.defaultScope = this
+
+    apply: (obj, args) ->
+        obj._appliedScopes ?= []
+        obj._appliedScopes.push [@name, @builder, args]
+
+    liftScope: (to) ->
+        unless @name of to
+            self = this
+            to[@name] = (args...) ->
+                self.apply(this, args)
+                this
 
     createScope: ->
         self = this
         (args...) ->
-            @_appliedScopes ?= []
-            @_appliedScopes.push [self.name, self.builder, args]
+            self.apply(this, args)
             this
 
     createStaticScope: ->
         self = this
         ->
-            instance = self.model.forge()
+            instance = @forge()
             instance[self.name].apply(instance, arguments)
 
 module.exports = Scope
