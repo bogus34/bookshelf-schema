@@ -31,148 +31,126 @@ plugin = (options = {}) -> (db) ->
     options.createProperties ?= true
     options.validation ?= true
 
-    Model = db.Model
-    Model.db = db
-    Model.transaction = db.transaction.bind db
-    Model.__bookshelf_schema_options = options
-    Model.schema = applySchema
-    Model::validate = validate
+    originalModel = db.Model
 
-    replaceExtend Model
-    replaceFormat Model
-    replaceParse Model
-    replaceDestroy Model
-    applyScopes Model
+    buildSchema = (entities) ->
+        schema = []
+        e.contributeToSchema?(schema) for e in entities
+        schema
 
-applySchema = (schema) ->
-    @__schema = buildSchema schema
-    contributeToModel this, @__schema
+    contributeToModel = (cls, entities) ->
+        e.contributeToModel(cls) for e in entities
+        undefined
 
-    oldInitialize = @::initialize
-    @::initialize = ->
-        if oldInitialize?
-            oldInitialize.apply this, arguments
-        initSchema.apply this
+    class Model extends db.Model
+        @db: db
+        @transaction: db.transaction.bind db
+        @__bookshelf_schema_options = options
 
-replaceExtend = (Model) ->
-    originalExtend = Model.extend
-    Model.extend = (props, statics) ->
-        if statics.schema
-            schema = statics.schema
-            delete statics.schema
-        cls = originalExtend.call Model, props, statics
-        return cls unless schema
-        applySchema.call cls, schema
-        cls
+        @schema: (schema) ->
+            @__schema = buildSchema schema
+            contributeToModel this, @__schema
 
-replaceFormat = (Model) ->
-    originalFormat = Model::format
-    Model::format = (attrs, options) ->
-        attrs = originalFormat.call this, attrs, options
-        if @constructor.__bookshelf_schema
-            for f in @constructor.__bookshelf_schema.formatters
-                f attrs, options
-        attrs
+        @extend: (props, statics) ->
+            if statics.schema
+                schema = statics.schema
+                delete statics.schema
+            cls = originalModel.extend.call this, props, statics
+            return cls unless schema
+            cls.schema schema
+            cls
 
-replaceParse = (Model) ->
-    originalParse = Model::parse
-    Model::parse = (resp, options) ->
-        attrs = originalParse.call this, resp, options
-        if @constructor.__bookshelf_schema
-            for f in @constructor.__bookshelf_schema.parsers
-                f attrs, options
-        attrs
+        initialize: ->
+            super
+            @initSchema()
 
-replaceDestroy = (Model) ->
-    originalDestroy = Model::destroy
-    Model::destroy = (options) ->
-        utils.forceTransaction Model.transaction, options, (options) =>
-            originalDestroy.call this, options
+        initSchema: ->
+            @constructor.__schema ?= []
+            e.initialize?(this) for e in @constructor.__schema
+            if @constructor.__bookshelf_schema_options.validation
+                @on 'saving', @validate, this
+            for e in @constructor.__schema when e.onDestroy?
+                @on 'destroying', @_handleDestroy, this
+                # _handleDestroy will iterate over all schema entities so we break here
+                break
+            if @constructor.__bookshelf_schema?.defaultScope
+                @constructor.__bookshelf_schema.defaultScope.apply(this)
+            undefined
 
-_applyScopes = ->
-    if @_appliedScopes
-        @query (qb) =>
-            for [name, scope, args] in @_appliedScopes
-                scope.apply(qb, args)
+        format: (attrs, options) ->
+            attrs = super attrs, options
+            if @constructor.__bookshelf_schema
+                for f in @constructor.__bookshelf_schema.formatters
+                    f attrs, options
+            attrs
 
-liftRelatedScopes = (to) ->
-    target = to.model or to.relatedData.target
-    if target and target.__schema?
-        for e in target.__schema when e.liftScope?
-            e.liftScope(to)
+        parse: (resp, options) ->
+            attrs = super resp, options
+            if @constructor.__bookshelf_schema
+                for f in @constructor.__bookshelf_schema.parsers
+                    f attrs, options
+            attrs
 
-unscoped = ->
-    @_appliedScopes = []
-    this
+        validate: (self, attrs) ->
+            return utils.Fulfilled() unless @constructor.__bookshelf_schema_options.validation
+            json = @toJSON(validating: true)
+            validations = @constructor.__bookshelf_schema?.validations || []
+            modelValidations = @constructor.__bookshelf_schema?.modelValidations
+            options = @_checkitOptions.call(this)
+            checkit = CheckIt(validations, options).run(json)
+            if @modelValidations and @modelValidations.length > 0
+                checkit = checkit.then -> CheckIt(all: model_validations, options).run(all: json)
+            checkit
 
-relationMethods = ['hasMany', 'hasOne', 'belongsToMany',
-    'morphOne', 'morphMany', 'belongsTo', 'through']
-applyScopes = (Model) ->
-    for method in ['all', 'fetch']
-        do (original = Model::[method]) ->
-            Model::[method] = ->
-                _applyScopes.call this
-                original.apply this, arguments
+        destroy: (options) ->
+            utils.forceTransaction Model.transaction, options, (options) =>
+                super options
 
-    Model::unscoped = -> unscoped
-    Model.unscoped = -> @forge().unscoped()
+        for method in ['all', 'fetch']
+            do (method) ->
+                Model::[method] = ->
+                    @_applyScopes()
+                    super
 
-    for method in relationMethods
-        do (original = Model::[method]) ->
-            Model::[method] = ->
-                related = original.apply this, arguments
-                liftRelatedScopes.call this, related
-                related.unscoped = unscoped
-                related
+        for method in ['hasMany', 'hasOne', 'belongsToMany', 'morphOne', 'morphMany', 'belongsTo', 'through']
+            do (method) ->
+                Model::[method] = ->
+                    related = super
+                    @_liftRelatedScopes related
+                    related.unscoped = @unscoped
+                    related
 
-    undefined
+        unscoped: ->
+            @_appliedScopes = []
+            this
+        @unscoped: -> @forge().unscoped()
 
-buildSchema = (entities) ->
-    schema = []
-    e.contributeToSchema?(schema) for e in entities
-    schema
+        _checkitOptions: ->
+            memo = {}
+            for k in ['language', 'labels', 'messages']
+                if @constructor.__bookshelf_schema_options[k]
+                    memo[k] = @constructor.__bookshelf_schema_options[k]
+            memo
 
-contributeToModel = (cls, entities) ->
-    e.contributeToModel(cls) for e in entities
-    undefined
+        _handleDestroy: (model, options = {}) ->
+            # somehow query passed with options will break some of subsequent queries
+            options = utils.clone options, expect: ['query']
+            options.destroyingCache = "#{model.tableName}:#{model.id}": utils.Fulfilled()
+            handled = (e.onDestroy?(model, options) for e in @constructor.__schema)
+            Promise.all(handled)
+            .then -> Promise.all utils.values(options.destroyingCache)
+            .then -> delete options.destroyingCache
 
-handleDestroy = (model, options = {}) ->
-    # somehow query passed with options will break some of subsequent queries
-    options = utils.clone options, expect: ['query']
-    options.destroyingCache = "#{model.tableName}:#{model.id}": utils.Fulfilled()
-    handled = (e.onDestroy?(model, options) for e in @constructor.__schema)
-    Promise.all(handled)
-    .then -> Promise.all utils.values(options.destroyingCache)
-    .then -> delete options.destroyingCache
+        _applyScopes: ->
+            if @_appliedScopes
+                @query (qb) => scope.apply(qb, args) for [name, scope, args] in @_appliedScopes
 
-initSchema = ->
-    e.initialize?(this) for e in @constructor.__schema
-    if @constructor.__bookshelf_schema_options.validation
-        @on 'saving', @validate, this
-    for e in @constructor.__schema when e.onDestroy?
-        @on 'destroying', handleDestroy, this
-        # _handleDestroy will iterate over all schema entities so we break here
-        break
-    if @constructor.__bookshelf_schema?.defaultScope
-        @constructor.__bookshelf_schema.defaultScope.apply(this)
-    undefined
+        _liftRelatedScopes: (to) ->
+            target = to.model or to.relatedData.target
+            if target and target.__schema?
+                for e in target.__schema when e.liftScope?
+                    e.liftScope(to)
 
-CheckItOptions = ->
-    memo = {}
-    for k in ['language', 'labels', 'messages']
-        if @constructor.__bookshelf_schema_options[k]
-            memo[k] = @constructor.__bookshelf_schema_options[k]
-    memo
-
-validate = (self, attrs) ->
-    return utils.Fulfilled() unless @constructor.__bookshelf_schema_options.validation
-    json = @toJSON(validating: true)
-    validations = @constructor.__bookshelf_schema?.validations || []
-    modelValidations = @constructor.__bookshelf_schema?.modelValidations
-    options = CheckItOptions.call(this)
-    checkit = CheckIt(validations, options).run(json)
-    if @modelValidations and @modelValidations.length > 0
-        checkit = checkit.then -> CheckIt(all: model_validations, options).run(all: json)
-    checkit
+    db.Model = Model
 
 module.exports = plugin
