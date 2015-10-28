@@ -6,4 +6,3 @@ global.expect = chai.expect
 global.assert = chai.assert
 global.spy = chai.spy
 global.co = require('co').wrap
-

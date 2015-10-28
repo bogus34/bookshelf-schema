@@ -12,13 +12,15 @@ describe "Validation", ->
 
     before ->
         db = init.init()
-        User = class User extends db.Model
+        init.users()
+
+    beforeEach ->
+        class User extends db.Model
             tableName: 'users'
             @schema [
                 StringField 'username', minLength: 3, maxLength: 15
                 EmailField 'email'
             ]
-        init.users()
 
     it 'should create array of validations', ->
         User.__bookshelf_schema.validations.should.deep.equal
@@ -32,29 +34,34 @@ describe "Validation", ->
         ]
 
     it 'should run validations on save', co ->
-        f = spy -> false
-        User.__bookshelf_schema.validations.username.push f
-
-        e = yield new User(username: 'bogus').save().should.be.rejected
-        e.should.be.an.instanceof CheckIt.Error
-        f.should.have.been.called
+        spy.on User.prototype, 'validate'
+        user = new User(username: 'alice')
+        yield user.save()
+        user.validate.should.have.been.called()
 
     it "shouldn't apply validation if plugin initialized with option validation: false", co ->
         db2 = Bookshelf db.knex
         db2.plugin Schema(validation: false)
 
         class User extends db2.Model
+            tableName: 'users', validations: [ -> false ]
+
+        spy.on User.prototype, 'validate'
+        user = new User(username: 'alice')
+        yield user.save()
+        user.validate.should.not.have.been.called()
+        yield user.validate().should.be.fulfilled
+
+    it "shouldn't apply validation when saved with option validation: false", co ->
+        f = spy -> false
+        class User extends db.Model
             tableName: 'users'
             @schema [
-                StringField 'username', minLength: 3, maxLength: 15
+                StringField 'username', validations: [ f ]
             ]
-
-        user = new User(username: 'x')
-
-        yield [
-            user.validate().should.be.fulfilled
-            user.save().should.be.fulfilled
-        ]
+        user = new User(username: 'alice')
+        yield user.save(null, validation: false)
+        f.should.not.have.been.called()
 
     it 'accepts custom validation rules like Checkit do', co ->
         class User extends db.Model
