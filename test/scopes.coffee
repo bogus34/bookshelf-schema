@@ -91,26 +91,45 @@ describe "Scopes", ->
         it 'with count', ->
             User.flagged().nameStartsWith('a').count().then(parseInt).should.become 1
 
+    it 'applies default scope', co ->
+        User.schema [
+            StringField 'username'
+            BooleanField 'flag'
+            Scope 'default', -> @where flag: true
+        ]
+        yield [
+             new User(username: 'alice', flag: true).save()
+             new User(username: 'bob', flag: false).save()
+        ]
+
+        result = yield User.fetchAll()
+        result.length.should.equal 1
+        result = yield User.unscoped().fetchAll()
+        result.length.should.equal 2
+
+    it 'can chain scope next to unscoped', co ->
+        User.schema [
+            StringField 'username'
+            BooleanField 'flag'
+            Scope 'default', -> @where flag: true
+            Scope 'nameStartsWith', (value) -> @where 'username', 'like', "#{value}%"
+        ]
+        yield [
+             new User(username: 'alice', flag: false).save()
+             new User(username: 'bob', flag: false).save()
+        ]
+
+        result = yield User.unscoped().nameStartsWith('a').fetchAll()
+        result.length.should.equal 1
+        result.at(0).username.should.equal 'alice'
+
     describe 'on relations', ->
         beforeEach co ->
-            User.schema [
-                StringField 'username'
-
-                Scope 'flagged', -> @where flag: true
-                Scope 'nameStartsWith', (value) -> @where 'username', 'like', "#{value}%"
-            ]
-
-            Group.schema [
-                StringField 'name'
-
-                BelongsToMany User
-                BelongsToMany User, name: 'flaggedUsers', query: -> @flagged()
-            ]
-
             users = yield [
                  new User(username: 'alice', flag: true).save()
                  new User(username: 'bob', flag: true).save()
                  new User(username: 'alan', flag: false).save()
+                 new User(username: 'charley', flag: true).save()
             ]
 
             groups = yield [
@@ -121,12 +140,26 @@ describe "Scopes", ->
             yield [
                 # alice is wheel
                 db.knex('groups_users').insert(user_id: users[0].id, group_id: groups[0].id)
-                # bob and alan are users
+                # bob, alan and charley are users
                 db.knex('groups_users').insert(user_id: users[1].id, group_id: groups[1].id)
                 db.knex('groups_users').insert(user_id: users[2].id, group_id: groups[1].id)
+                db.knex('groups_users').insert(user_id: users[3].id, group_id: groups[1].id)
             ]
 
         describe 'BelongsToMany', ->
+            beforeEach co ->
+                User.schema [
+                    StringField 'username'
+                    Scope 'flagged', -> @where flag: true
+                    Scope 'nameStartsWith', (value) -> @where 'username', 'like', "#{value}%"
+                ]
+
+                Group.schema [
+                    StringField 'name'
+                    BelongsToMany User
+                    BelongsToMany User, name: 'flaggedUsers', query: -> @flagged()
+                ]
+
             it 'fetch', co ->
                 wheel = yield new Group(name: 'wheel').fetch()
                 wheelUsers = yield wheel.$users.flagged().fetch()
@@ -140,20 +173,102 @@ describe "Scopes", ->
 
             it 'scope in relation definition', co ->
                 users = yield new Group(name: 'users').fetch()
-                yield users.$users.count().should.become 2
-                yield users.$flaggedUsers.count().should.become 1
+                yield users.$users.count().should.become 3
+                yield users.$flaggedUsers.count().should.become 2
                 usersUsers = yield users.$flaggedUsers.fetch()
                 usersUsers.should.be.an.instanceof db.Collection
-                usersUsers.length.should.equal 1
+                usersUsers.length.should.equal 2
                 usersUsers.at(0).username.should.equal 'bob'
 
-        it "doesn't affects cached relation", co ->
-            group = yield new Group(name: 'users').fetch()
-            flagged = yield group.$users.flagged().fetch()
-            all = yield group.$users.fetch()
-            flagged2 = yield group.$users.flagged().fetch()
+        describe "doesn't affects cached relation", ->
+            beforeEach co ->
+                Group.schema [
+                    StringField 'name'
+                    BelongsToMany User
+                ]
 
-            flagged.length.should.equal 1
-            all.length.should.equal 2
-            flagged2.length.should.equal 1
-            group.$users.length.should.equal 2
+            it 'with scope, then without', co ->
+                User.schema [
+                    Scope 'flagged', -> @where flag: true
+                    Scope 'nameStartsWith', (value) -> @where 'username', 'like', "#{value}%"
+                ]
+                group = yield new Group(name: 'users').fetch()
+                flagged = yield group.$users.flagged().fetch()
+                all = yield group.$users.fetch()
+                flagged2 = yield group.$users.flagged().fetch()
+
+                flagged.length.should.equal 2
+                all.length.should.equal 3
+                flagged2.length.should.equal 2
+                group.$users.length.should.equal 3
+
+            it 'with default scope, then with scope', co ->
+                User.schema [
+                    Scope 'default', -> @where flag: true
+                    Scope 'nameStartsWith', (value) -> @where 'username', 'like', "#{value}%"
+                ]
+                group = yield new Group(name: 'users').fetch()
+                flagged = yield group.$users.fetch()
+                none = yield group.$users.nameStartsWith('a').fetch()
+
+                flagged.length.should.equal 2
+                none.length.should.equal 0
+                group.$users.length.should.equal 2
+
+            it 'with scope, then with default scope', co ->
+                User.schema [
+                    Scope 'default', -> @where flag: true
+                    Scope 'nameStartsWith', (value) -> @where 'username', 'like', "#{value}%"
+                ]
+                group = yield new Group(name: 'users').fetch()
+                bob = yield group.$users.nameStartsWith('b').fetch()
+                flagged = yield group.$users.fetch()
+
+                bob.length.should.equal 1
+                flagged.length.should.equal 2
+                group.$users.length.should.equal 2
+
+            it 'with default scope, then unscoped', co ->
+                User.schema [
+                    Scope 'default', -> @where flag: true
+                    Scope 'nameStartsWith', (value) -> @where 'username', 'like', "#{value}%"
+                ]
+                group = yield new Group(name: 'users').fetch()
+                flagged = yield group.$users.fetch()
+                all = yield group.$users.unscoped().fetch()
+
+                flagged.length.should.equal 2
+                all.length.should.equal 3
+                group.$users.length.should.equal 2
+
+            it 'unscoped, then with default scope', co ->
+                User.schema [
+                    Scope 'default', -> @where flag: true
+                    Scope 'nameStartsWith', (value) -> @where 'username', 'like', "#{value}%"
+                ]
+                group = yield new Group(name: 'users').fetch()
+                all = yield group.$users.unscoped().fetch()
+                flagged = yield group.$users.fetch()
+
+                flagged.length.should.equal 2
+                all.length.should.equal 3
+                group.$users.length.should.equal 2
+
+        it "uses default scope with relations", co ->
+            class User extends db.Model
+                tableName: 'users'
+                @schema [
+                    StringField 'username'
+                    Scope 'default', -> @where flag: true
+                ]
+            class Group extends db.Model
+                tableName: 'groups'
+                @schema [
+                    BelongsToMany User
+                ]
+            group = yield new Group(name: 'users').fetch()
+            flagged = yield group.$users.fetch()
+            flagged.length.should.equal 2
+
+            all = yield group.$users.unscoped().fetch()
+            all.length.should.equal 3

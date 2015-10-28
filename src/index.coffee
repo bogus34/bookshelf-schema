@@ -86,7 +86,7 @@ plugin = (options = {}) -> (db) ->
 
         parse: (resp, options) ->
             attrs = super resp, options
-            if @constructor.__bookshelf_schema
+            if @constructor.__bookshelf_schema?.parsers
                 for f in @constructor.__bookshelf_schema.parsers
                     f attrs, options
             attrs
@@ -119,7 +119,7 @@ plugin = (options = {}) -> (db) ->
                 Model::[method] = ->
                     related = super
                     @_liftRelatedScopes related
-                    related.unscoped = @unscoped
+                    related.unscoped = -> @clone()
                     related
 
         unscoped: ->
@@ -159,6 +159,11 @@ plugin = (options = {}) -> (db) ->
                 Collection::[method] = ->
                     @_applyScopes()
                     super
+
+        cloneWithScopes: ->
+            result = @clone()
+            result._appliedScopes = @_appliedScopes?[..]
+            result
 
         _applyScopes: ->
             if @_appliedScopes

@@ -45,12 +45,15 @@ class Scope
         obj._appliedScopes.push [@name, @builder, args]
 
     liftScope: (to) ->
-        unless @name of to
-            self = this
-            to[@name] = (args...) ->
-                obj = if @_appliedScopes then this else @clone()
-                self.apply(obj, args)
-                obj
+        if @name is 'default'
+            @apply(to)
+        else
+            unless @name of to
+                self = this
+                to[@name] = (args...) ->
+                    obj = @cloneWithScopes()
+                    self.apply(obj, args)
+                    obj
 
     createScope: ->
         self = this
