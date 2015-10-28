@@ -70,13 +70,13 @@ module.exports =
 
                 loadUnloaded.then (unloaded) =>
                     list = unloaded.models.concat models
-                    model.triggerThen('attaching', model, list, options)
+                    model.triggerThen('attaching', model, relation, list, options)
                     .then =>
                         pending = for obj in list
                             @_attachOne obj, options
                         Promise.all pending
                     .then (result) ->
-                        model.triggerThen('attached', model, result, options)
+                        model.triggerThen('attached', model, relation, result, options)
             catch e
                 Rejected e
 
@@ -106,13 +106,13 @@ module.exports =
 
                 loadUnloaded.then (unloaded) =>
                     list = unloaded.models.concat models
-                    model.triggerThen('detaching', model, list, options)
+                    model.triggerThen('detaching', model, relation, list, options)
                     .then =>
                         pending = for obj in list
                             @_detachOne obj, options
                         Promise.all pending
                     .then (result) ->
-                        model.triggerThen('detached', model, result, options)
+                        model.triggerThen('detached', model, relation, result, options)
             catch e
                 Rejected e
 

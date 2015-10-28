@@ -26,15 +26,15 @@ module.exports =
                 unsaved = unsaved.map( (obj) -> obj.save(null, options) )
                 Promise.all(unsaved).then (saved) =>
                     list = saved.concat other
-                    model.triggerThen('attaching', model, list, options)
+                    model.triggerThen('attaching', model, relation, list, options)
                     .then => @_originalAttach list, options
-                    .then (result) -> model.triggerThen('attached', model, result, options)
+                    .then (result) -> model.triggerThen('attached', model, relation, result, options)
             catch e
                 Rejected e
 
     detach: (model, relation, list, options) ->
         forceTransaction relation.model.transaction, options, (options) =>
-            model.triggerThen('detaching', model, list, options)
+            model.triggerThen('detaching', model, relation, list, options)
             .then => @_originalDetach list, options
-            .then (result) -> model.triggerThen('detached', model, result, options)
+            .then (result) -> model.triggerThen('detached', model, relation, result, options)
 
