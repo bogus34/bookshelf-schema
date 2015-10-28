@@ -163,3 +163,40 @@ describe "Relations", ->
                 yield alice.destroy().should.be.fulfilled
 
                 db.knex('groups_users').where(user_id: aliceId).count('*').map( (a) -> parseInt(values(a)[0])).should.become [0]
+
+        describe 'events', ->
+            beforeEach ->
+                class Group extends db.Model
+                    tableName: 'groups'
+                    @schema [
+                        StringField 'name'
+                    ]
+
+                class User extends db.Model
+                    tableName: 'users'
+                    @schema [
+                        StringField 'username'
+                        BelongsToMany Group
+                    ]
+
+            afterEach -> init.truncate 'users', 'groups', 'groups_users'
+
+            it 'fires attaching, attached, detaching and detached events', co ->
+                [alice, groups] = yield [ fixtures.alice(), fixtures.groups('users') ]
+                yield fixtures.connect alice, groups
+
+                onAttaching = spy()
+                onAttached = spy()
+                onDetaching = spy()
+                onDetached = spy()
+
+                alice.on 'attaching', onAttaching
+                alice.on 'attached', onAttached
+                alice.on 'detaching', onDetaching
+                alice.on 'detached', onDetached
+
+                wheel = yield new Group(name: 'wheel').save()
+                yield alice.$groups.assign [wheel]
+
+                for f in [onAttaching, onAttached, onDetaching, onDetached]
+                    f.should.have.been.called.once()

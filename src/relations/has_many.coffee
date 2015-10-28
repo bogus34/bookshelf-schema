@@ -44,7 +44,6 @@ module.exports =
             catch e
                 Rejected e
 
-    # TODO: fire 'attaching' and 'attached' events
     attach: (model, relation, list, options) ->
         return unless list?
         list = [list] unless list instanceof Array
@@ -70,17 +69,20 @@ module.exports =
                     @model.collection().where(@model.idAttribute, 'in', unloaded).fetch(options)
 
                 loadUnloaded.then (unloaded) =>
-                    unloaded = unloaded.models
-                    pending = for obj in unloaded.concat(created, models)
-                        @_attachOne obj, options
-                    Promise.all pending
+                    list = unloaded.models.concat models
+                    model.triggerThen('attaching', model, list, options)
+                    .then =>
+                        pending = for obj in list
+                            @_attachOne obj, options
+                        Promise.all pending
+                    .then (result) ->
+                        model.triggerThen('attached', model, result, options)
             catch e
                 Rejected e
 
     _attachOne: (model, relation, obj, options) ->
         obj.set(@relatedData.key('foreignKey'), model.id).save(null, options)
 
-    # TODO: fire 'detaching' and 'detached' events
     detach: (model, relation, list, options) ->
         return unless list?
         list = [list] unless list instanceof Array
@@ -103,10 +105,14 @@ module.exports =
                     @model.collection().where(@model.idAttribute, 'in', unloaded).fetch(options)
 
                 loadUnloaded.then (unloaded) =>
-                    unloaded = unloaded.models
-                    pending = for obj in unloaded.concat(models)
-                        @_detachOne obj, options
-                    Promise.all pending
+                    list = unloaded.models.concat models
+                    model.triggerThen('detaching', model, list, options)
+                    .then =>
+                        pending = for obj in list
+                            @_detachOne obj, options
+                        Promise.all pending
+                    .then (result) ->
+                        model.triggerThen('detached', model, result, options)
             catch e
                 Rejected e
 

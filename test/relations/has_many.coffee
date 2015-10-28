@@ -192,3 +192,40 @@ describe "Relations", ->
                 .fetch()
                 .then (c) -> c.pluck 'user_id'
                 .should.become [null, null]
+
+        describe 'events', ->
+            beforeEach ->
+                class Photo extends db.Model
+                    tableName: 'photos'
+
+                    @schema [
+                        StringField 'filename'
+                    ]
+
+                class User extends db.Model
+                    tableName: 'users'
+
+                    @schema [
+                        StringField 'username'
+                        HasMany Photo
+                    ]
+
+            afterEach -> init.truncate 'users', 'photos'
+
+            it 'fires attaching, attached, detaching and detached events', co ->
+                [alice, _] = yield fixtures.alice()
+                onAttaching = spy()
+                onAttached = spy()
+                onDetaching = spy()
+                onDetached = spy()
+
+                alice.on 'attaching', onAttaching
+                alice.on 'attached', onAttached
+                alice.on 'detaching', onDetaching
+                alice.on 'detached', onDetached
+
+                photo3 = yield new Photo(filename: 'photo3.jpg').save()
+                yield alice.$photos.assign [photo3]
+
+                for f in [onAttaching, onAttached, onDetaching, onDetached]
+                    f.should.have.been.called.once()
