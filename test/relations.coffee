@@ -64,3 +64,28 @@ describe "Relations", ->
             photos.length.should.be.equal 1
             photos.first().should.be.an.instanceof Photo
             photos.first().filename.should.be.equal 'photo1.jpg'
+
+        it 'works with plugin registry', co ->
+            db2 = Bookshelf db.knex
+            db2.plugin 'registry'
+
+            db2.plugin Schema()
+
+            class User extends db2.Model
+                tableName: 'users'
+                @schema [
+                    HasMany 'Photo'
+                ]
+            db2.model 'User', User
+
+            class Photo extends db2.Model
+                tableName: 'photos'
+                @schema [
+                    StringField 'filename'
+                ]
+            db2.model 'Photo', Photo
+
+            [alice, _] = yield fixtures.alice()
+
+            alice.$photos.count().should.become 2
+

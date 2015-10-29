@@ -172,10 +172,14 @@ class Relation
 
     _deduceName: ->
         return @options.name if @options.name?
-        if @constructor.multiple
-            pluralize @relatedModel.name.toLowerCase()
+        relatedModelName = if typeof @relatedModel is 'string'
+            @relatedModel
         else
-            @relatedModel.name.toLowerCase()
+            @relatedModel.name
+        if @constructor.multiple
+            pluralize relatedModelName.toLowerCase()
+        else
+            relatedModelName.toLowerCase()
 
     _deduceAccessorName: -> "#{@pluginOption('relationAccessorPrefix', '$')}#{@name}"
 
