@@ -24,6 +24,7 @@ coffee = './node_modules/.bin/coffee'
 
 option '-d', '--db [DB]', 'Test with this database variant'
 option '-s', '--debug-sql', 'Turn on sql debug'
+option '', '--debug', 'Use node debugger'
 
 task "test", "run tests", (options) ->
     db_variant = options.db or 'sqlite'
@@ -33,13 +34,13 @@ task "test", "run tests", (options) ->
     if options['debug-sql']
         env['BOOKSHELF_SCHEMA_TESTS_DEBUG'] = '1'
         env['DEBUG'] = env['DEBUG'] + ' knex:query'
-    spawn mocha,
-        ['--compilers', 'coffee:coffee-script',
+    args = ['--compilers', 'coffee:coffee-script',
         '--reporter', "#{REPORTER}",
         '--require', 'coffee-script/register',
         '--require', path.join('test', 'test_helper.coffee'),
-        '--colors', '--recursive', 'test'],
-        'env': env, 'cwd': process.cwd(), 'stdio': 'inherit'
+        '--colors', '--recursive', 'test']
+    args.unshift '--debug-brk' if options.debug
+    spawn mocha, args, 'env': env, 'cwd': process.cwd(), 'stdio': 'inherit'
 
 task "build", "build library", ->
     env = process.env
