@@ -1,10 +1,7 @@
 {Rejected, Fulfilled, forceTransaction} = require '../utils'
 cast = require './cast'
-fixedCount = require './count'
 
 module.exports =
-    count: (model, relation, options) -> fixedCount this, options
-
     # TODO: allow assignment with interim model
     assign: (model, relation, list, options) ->
         if relation.options.through

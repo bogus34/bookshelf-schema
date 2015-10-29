@@ -1,7 +1,6 @@
-{count, assign, attach, detach} = require './has_many'
+{assign, attach, detach} = require './has_many'
 
 module.exports =
-    count: count
     assign: assign
     attach: attach
     _attachOne: (model, relation, obj, options) ->

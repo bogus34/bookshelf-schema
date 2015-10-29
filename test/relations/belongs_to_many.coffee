@@ -101,7 +101,6 @@ describe "Relations", ->
                 yield fixtures.connect alice, groups[..1]
                 yield [
                     alice.$groups.count().should.become 2
-                    alice.$groups._originalCount().should.not.become 2
                 ]
 
         describe 'onDestroy', ->

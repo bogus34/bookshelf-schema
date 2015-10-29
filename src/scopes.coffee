@@ -48,6 +48,8 @@ class Scope
         if @name is 'default'
             @apply(to)
         else
+            to._liftedScopes ?= []
+            to._liftedScopes.push this
             unless @name of to
                 self = this
                 to[@name] = (args...) ->

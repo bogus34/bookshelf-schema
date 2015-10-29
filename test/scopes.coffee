@@ -180,6 +180,13 @@ describe "Scopes", ->
                 usersUsers.length.should.equal 2
                 usersUsers.at(0).username.should.equal 'bob'
 
+            it 'chaining scopes', co ->
+                users = yield new Group(name: 'users').fetch()
+                yield users.$users.flagged().nameStartsWith('b').count().should.become 1
+                result = yield users.$users.flagged().nameStartsWith('b').fetch()
+                result.length.should.equal 1
+                result.at(0).username.should.equal 'bob'
+
         describe "doesn't affects cached relation", ->
             beforeEach co ->
                 Group.schema [

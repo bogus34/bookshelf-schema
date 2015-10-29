@@ -1,8 +1,7 @@
 {Rejected, forceTransaction} = require '../utils'
-{count, assign} = require './has_many'
+{assign} = require './has_many'
 
 module.exports =
-    count: count
     assign: assign
 
     attach: (model, relation, list, options) ->

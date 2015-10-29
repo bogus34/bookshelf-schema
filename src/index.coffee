@@ -160,14 +160,29 @@ plugin = (options = {}) -> (db) ->
                     @_applyScopes()
                     super
 
+        count: (column = '*', options) ->
+            @_applyScopes?()
+            sync = @sync(options)
+
+            relatedData = sync.syncing.relatedData
+            if relatedData
+                if relatedData.isJoined()
+                    relatedData.joinClauses sync.query
+                relatedData.whereClauses sync.query
+
+            sync.count(column)
+            .then (result) ->
+                Number result
+
         cloneWithScopes: ->
             result = @clone()
+            if @_liftedScopes
+                for scope in @_liftedScopes
+                    scope.liftScope(result)
             result._appliedScopes = @_appliedScopes?[..]
             result
 
-        _applyScopes: ->
-            if @_appliedScopes
-                @query (qb) => scope.apply(qb, args) for [name, scope, args] in @_appliedScopes
+        _applyScopes: Model::_applyScopes
 
     db.Model = Model
     db.Collection = Collection

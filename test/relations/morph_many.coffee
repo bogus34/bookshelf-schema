@@ -93,7 +93,6 @@ describe "Relations", ->
                 boy = yield new Tag(name: 'boy').save()
                 yield [
                     alice.$tags.count().should.become 2
-                    alice.$tags._originalCount().should.not.become 2
                 ]
 
         describe 'onDestroy', ->

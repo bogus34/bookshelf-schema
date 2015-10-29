@@ -106,7 +106,6 @@ describe "Relations", ->
                 otherPhoto = yield new Photo(filename: 'photo3.jpg').save()
                 yield [
                     alice.$photos.count().should.become photos.length
-                    alice.$photos._originalCount().should.not.become photos.length
                 ]
 
         describe 'through', ->
