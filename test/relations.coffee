@@ -60,6 +60,7 @@ describe "Relations", ->
 
             [alice, _] = yield fixtures.alice()
 
+            yield alice.$photos.count().should.become 1
             photos = yield alice.$photos.fetch()
             photos.length.should.be.equal 1
             photos.first().should.be.an.instanceof Photo

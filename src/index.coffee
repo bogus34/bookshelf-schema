@@ -163,16 +163,18 @@ plugin = (options = {}) -> (db) ->
         count: (column = '*', options) ->
             @_applyScopes?()
             sync = @sync(options)
+            query = sync.query.clone()
+            @_knex = sync.query
 
             relatedData = sync.syncing.relatedData
             if relatedData
                 if relatedData.isJoined()
-                    relatedData.joinClauses sync.query
-                relatedData.whereClauses sync.query
+                    relatedData.joinClauses query
+                relatedData.whereClauses query
 
-            sync.count(column)
+            query.count(column)
             .then (result) ->
-                Number result
+                Number utils.values(result[0])[0]
 
         cloneWithScopes: ->
             result = @clone()
