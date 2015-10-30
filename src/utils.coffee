@@ -9,6 +9,11 @@ utils =
             callback()
             throw e
         )
+    ensurePromise: (x) ->
+        if typeof x.then is 'function'
+            x
+        else
+            utils.Fulfilled(x)
     values: (obj) -> v for k, v of obj
     pluck: (obj, fields...) ->
         return {} unless obj?
