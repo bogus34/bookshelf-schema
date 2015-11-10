@@ -20,10 +20,12 @@ REPORTER = "spec"        # hierarchical spec list
 # REPORTER = "nyan"        # nyan cat!
 
 mocha = './node_modules/.bin/mocha'
+istanbul = './node_modules/.bin/istanbul'
 coffee = './node_modules/.bin/coffee'
 
 option '-d', '--db [DB]', 'Test with this database variant'
 option '-s', '--debug-sql', 'Turn on sql debug'
+option '', '--coverage', 'Generate code coverage report'
 option '', '--debug', 'Use node debugger'
 
 task "test", "run tests", (options) ->
@@ -36,11 +38,19 @@ task "test", "run tests", (options) ->
         env['DEBUG'] = env['DEBUG'] + ' knex:query'
     args = ['--compilers', 'coffee:coffee-script',
         '--reporter', "#{REPORTER}",
-        '--require', 'coffee-script/register',
+        '--require', 'coffee-script/register']
+
+    if options.coverage
+        args = args.concat ['--require', 'coffee-coverage/register-istanbul']
+
+    args = args.concat [
         '--require', path.join('test', 'test_helper.coffee'),
-        '--colors', '--recursive', 'test']
+        '--colors', '--bail', '--recursive', 'test'
+    ]
     args.unshift '--debug-brk' if options.debug
     spawn mocha, args, 'env': env, 'cwd': process.cwd(), 'stdio': 'inherit'
+    if options.coverage
+        spawn istanbul, ['report'], env: env, cwd: process.cwd(), stdio: 'inherit'
 
 task "build", "build library", ->
     env = process.env

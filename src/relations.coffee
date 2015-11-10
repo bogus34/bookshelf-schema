@@ -91,7 +91,7 @@ class Relation
                 self._augementRelated this, related
             related
 
-    createSetter: ->
+    createSetter: -> undefined
 
     onDestroy: (model, options) ->
         switch @option('onDestroy', 'ignore')
