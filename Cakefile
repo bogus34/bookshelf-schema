@@ -1,4 +1,4 @@
-{spawn} = require "child_process"
+{spawnSync: spawn} = require "child_process"
 fs = require 'fs'
 path = require 'path'
 
