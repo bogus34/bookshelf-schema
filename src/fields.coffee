@@ -148,8 +148,6 @@ class NumberField extends Field
 
     validations: ->
         result = super
-        @acceptsRule result, ['naturalNonZero', 'positive']
-        @acceptsRule result, 'natural'
         @acceptsRule result, ['greaterThan', 'greater_than', 'gt']
         @acceptsRule result, ['greaterThanEqualTo', 'greater_than_equal_to', 'gte', 'min']
         @acceptsRule result, ['lessThan', 'less_than', 'lt']
@@ -163,6 +161,8 @@ class IntField extends NumberField
 
     validations: ->
         result = super
+        @acceptsRule result, ['naturalNonZero', 'positive']
+        @acceptsRule result, 'natural'
         result.unshift @_withMessage 'integer'
         result
 
