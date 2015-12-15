@@ -58,3 +58,22 @@ task "build", "build library", ->
         ['--compile', '-o', 'lib/', 'src/']
         'env': env, 'cwd': process.cwd(), 'stdio': 'inherit'
 
+task "build-doc", "build documentation", ->
+    venvStats = fs.statSync './.venv'
+    unless venvStats.isDirectory()
+        throw new Error('virtualenv directory (.venv) not found')
+
+    spawn '/bin/bash', [
+        '-c', 'source .venv/bin/activate; cd doc; sphinx-build -b html . _build/'
+    ], 'env': process.env, 'cwd': process.cwd(), 'stdio': 'inherit'
+
+debounce = (interval, fn) ->
+    timeout = null
+    ->
+        clearTimeout(timeout) if timeout
+        timeout = setTimeout fn, interval
+
+task "watch-doc", "watch and rebuild documentation", ->
+    fs.watch './doc', (event, filename) ->
+        unless filename[0] in ['.', '#']
+            debounce(200, ( -> invoke('build-doc') ))()
