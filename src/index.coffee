@@ -145,8 +145,9 @@ plugin = (options = {}) -> (db) ->
 
         _applyScopes: ->
             if @_appliedScopes
-                @query (qb) => scope.apply(qb, args) for [name, scope, args] in @_appliedScopes
-                delete @_applyScopes
+                for [name, scope, args] in @_appliedScopes
+                    @query (qb) => scope.apply(qb, args)
+                delete @_appliedScopes
 
         _liftRelatedScopes: (to) ->
             target = to.model or to.relatedData.target
@@ -182,7 +183,7 @@ plugin = (options = {}) -> (db) ->
             if @_liftedScopes
                 for scope in @_liftedScopes
                     scope.liftScope(result)
-            result._appliedScopes = @_appliedScopes?[..]
+            result._appliedScopes = @_appliedScopes[..] if @_appliedScopes
             result
 
         _applyScopes: Model::_applyScopes
