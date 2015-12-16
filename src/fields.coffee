@@ -144,6 +144,80 @@ class EmailField extends StringField
         result.push @_withMessage 'email'
         result
 
+alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!$%^&*()_+|~-=`{}[]:;<>?,./'
+class EncryptedString
+    constructor: (@algorithm, @encrypted, @plain, @options = {}) ->
+        @options.salt ?= true
+        @options.saltLength ?= 5
+
+    encrypt: ->
+        if @options.salt
+            salt = @_genSalt(@options.saltLength)
+            @encrypted = salt + @algorithm(salt + @plain)
+        else
+            @encrypted = @algorithm(@plain)
+
+        @encrypted
+
+    verify: (value) ->
+        salt = @encrypted.substr(0, @options.saltLength)
+        checked = @encrypted.substr(@options.saltLength)
+        @algorithm(salt + value) == checked
+
+    _genSalt: (length) ->
+        if @options.saltAlgorithm
+            @options.saltAlgorithm(length)
+        else
+            salt = new Array(length)
+            for i in [0...length]
+                salt.push alphabet[Math.round(Math.random() * alphabet.length)]
+            salt.join('')
+
+class EncryptedStringField extends Field
+    constructor: (name, options) ->
+        return new EncryptedStringField(name, options) unless this instanceof EncryptedStringField
+        super name, options
+
+    validations: ->
+        result = super()
+        @acceptsRule result, ['minLength', 'min_length'], @_validateMinLenghth
+        @acceptsRule result, ['maxLength', 'max_length'], @_validateMaxLenghth
+        result
+
+    parse: (attrs, options) ->
+        return attrs unless attrs[@name]?
+        attrs[@name] = new EncryptedString(@options.algorithm, attrs[@name], null, @options)
+        attrs
+
+    format: (attrs, options) ->
+        me = attrs[@name]
+        return attrs unless me?
+
+        attrs[@name] = switch
+            when me instanceof EncryptedString and me.plain?
+                # encrypt it
+                me.encrypt()
+            when me instanceof EncryptedString
+                # use encrypted
+                me.encrypted
+            when typeof me is 'string'
+                # the only case when encryptes field would be string is if new model is forged
+                # or field is set to new value
+                # reencrypt it
+                enc = new EncryptedString(@options.algorithm, null, me, @options)
+                enc.encrypt()
+        attrs
+
+    _validateMinLenghth: (value, minLength) ->
+        return if value instanceof EncryptedString and not value.plain?
+        value = if value instanceof EncryptedString then value.plain else value
+        value.length >= minLength
+
+    _validateMaxLenghth: (value, maxLength) ->
+        return if value instanceof EncryptedString and not value.plain?
+        value = if value instanceof EncryptedString then value.plain else value
+        value.length <= maxLength
+
 class NumberField extends Field
     constructor: (name, options) ->
         return new NumberField(name, options) unless this instanceof NumberField
@@ -256,14 +330,16 @@ class JSONField extends Field
         JSON.parse value
         true
 
-module.exports =
-    Field: Field
-    StringField: StringField
-    EmailField: EmailField
-    NumberField: NumberField
-    IntField: IntField
-    FloatField: FloatField
-    BooleanField: BooleanField
-    DateTimeField: DateTimeField
-    DateField: DateField
-    JSONField: JSONField
+module.exports = {
+    Field
+    StringField
+    EmailField
+    EncryptedStringField
+    NumberField
+    IntField
+    FloatField
+    BooleanField
+    DateTimeField
+    DateField
+    JSONField
+}

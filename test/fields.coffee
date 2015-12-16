@@ -54,6 +54,50 @@ describe "Fields", ->
                 new User(email: 'foo@bar.com').validate().should.be.fulfilled
             ]
 
+    describe 'EncryptedStringField', ->
+        sha1 = require 'sha1'
+        it 'save its value encrypted', co ->
+            User = define [F.EncryptedStringField 'password', algorithm: sha1]
+
+            alice = yield new User(password: 'password').save()
+            alice.password.should.equal 'password'
+            alice = yield User.forge(id: alice.id).fetch()
+            expect(alice.password.plain).to.be.null
+            alice.password.verify('password').should.be.true
+
+        it 'saves new value encrypted', co ->
+            User = define [F.EncryptedStringField 'password', algorithm: sha1]
+
+            alice = yield new User(password: 'password').save()
+            alice.password = 'password2'
+            yield alice.save()
+            alice = yield User.forge(id: alice.id).fetch()
+            alice.password.verify('password2').should.be.true
+
+        it "doesn't reencrypt it on save", co ->
+            User = define [F.EncryptedStringField 'password', algorithm: sha1]
+
+            alice = yield new User(password: 'password').save()
+            alice = yield User.forge(id: alice.id).fetch()
+            check = alice.password.encrypted
+            alice.set('username', 'alice')
+            yield alice.save()
+            alice = yield User.forge(id: alice.id).fetch()
+            alice.password.encrypted.should.equal check
+
+        it 'validates length against plain value', co ->
+            User = define [F.EncryptedStringField 'password', algorithm: sha1, minLength: 8, maxLength: 10]
+
+            yield [
+                new User(password: 'foo').validate().should.be.rejected
+                new User(password: 'password').validate().should.be.fulfilled
+                new User(password: 'password1234567890').validate().should.be.rejected
+            ]
+
+            alice = yield new User(password: 'password').save()
+            alice = yield User.forge(id: alice.id).fetch()
+            yield alice.validate().should.be.fulfilled
+
     describe 'IntField', ->
         it 'validates integers', co ->
             User = define [F.IntField 'code']
