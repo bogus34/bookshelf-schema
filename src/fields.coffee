@@ -177,7 +177,9 @@ class EncryptedString
             salt.join('')
 
 class EncryptedStringField extends Field
-    constructor: (name, options) ->
+    constructor: (name, options = {}) ->
+        unless typeof options.algorithm is 'function'
+            throw new Error('algorithm is required for EncryptedStringField')
         return new EncryptedStringField(name, options) unless this instanceof EncryptedStringField
         super name, options
 
