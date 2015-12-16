@@ -160,9 +160,12 @@ class EncryptedString
         @encrypted
 
     verify: (value) ->
-        salt = @encrypted.substr(0, @options.saltLength)
-        checked = @encrypted.substr(@options.saltLength)
-        @algorithm(salt + value) == checked
+        if @options.salt
+            salt = @encrypted.substr(0, @options.saltLength)
+            checked = @encrypted.substr(@options.saltLength)
+            @algorithm(salt + value) == checked
+        else
+            @algorithm(value) == @encrypted
 
     _genSalt: (length) ->
         if @options.saltAlgorithm

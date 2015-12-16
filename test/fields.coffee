@@ -85,6 +85,15 @@ describe "Fields", ->
             alice = yield User.forge(id: alice.id).fetch()
             alice.password.encrypted.should.equal check
 
+        it 'works w/o salt', co ->
+            User = define [F.EncryptedStringField 'password', algorithm: sha1, salt: false]
+
+            alice = yield new User(password: 'password').save()
+            alice.password.should.equal 'password'
+            alice = yield User.forge(id: alice.id).fetch()
+            expect(alice.password.plain).to.be.null
+            alice.password.verify('password').should.be.true
+
         it 'validates length against plain value', co ->
             User = define [F.EncryptedStringField 'password', algorithm: sha1, minLength: 8, maxLength: 10]
 
