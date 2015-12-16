@@ -37,10 +37,13 @@ class Field
         @_appendParser()
 
     validations: ->
-        if @options.validations
+        result = if @options.validations
             @options.validations[..]
         else
             []
+        @acceptsRule result, ['required', 'accepted', 'exists']
+        result
+
     modelValidations: ->
 
     createGetter: ->

@@ -19,6 +19,16 @@ describe "Fields", ->
 
     afterEach -> init.truncate 'users'
 
+    describe 'Any field', ->
+        it 'may be required', co ->
+            User = define [F.StringField 'username', required: true]
+            User.__bookshelf_schema.validations.username.should.deep.equal ['required']
+
+            yield [
+                new User().validate().should.be.rejected
+                new User(username: 'alice').validate().should.be.fulfilled
+            ]
+
     describe 'StringField', ->
         it 'validates min_length and max_length', co ->
             User = define [F.StringField 'username', min_length: 5, max_length: 10]
