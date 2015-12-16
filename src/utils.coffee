@@ -36,6 +36,7 @@ utils =
 
         res
     upperFirst: (str) -> str[0].toUpperCase() + str[1..]
+    lowerFirst: (str) -> str[0].toLowerCase() + str[1..]
     forceTransaction: (transaction, options, callback) ->
         options ?= {}
 

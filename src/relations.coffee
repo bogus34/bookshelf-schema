@@ -48,7 +48,7 @@
 
 pluralize = require 'pluralize'
 {IntField, StringField} = require './fields'
-{Fulfilled, Rejected, promiseFinally, values, pluck, upperFirst} = require './utils'
+{Fulfilled, Rejected, promiseFinally, values, pluck, upperFirst, lowerFirst} = require './utils'
 
 class Relation
     @multiple: false
@@ -177,11 +177,11 @@ class Relation
         else
             @relatedModel.name
         if @constructor.multiple
-            pluralize relatedModelName.toLowerCase()
+            pluralize lowerFirst(relatedModelName)
         else
-            relatedModelName.toLowerCase()
+            lowerFirst(relatedModelName)
 
-    _deduceAccessorName: -> "#{@pluginOption('relationAccessorPrefix', '$')}#{@name}"
+    _deduceAccessorName: -> "#{@pluginOption('accessorPrefix', '$')}#{@name}"
 
 class HasOne extends Relation
     constructor: (model, options = {}) ->
