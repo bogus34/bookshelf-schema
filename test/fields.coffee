@@ -55,9 +55,9 @@ describe "Fields", ->
             ]
 
     describe 'EncryptedStringField', ->
-        sha1 = require 'sha1'
+        reverse = (s) -> s.split().reverse().join('')
         it 'save its value encrypted', co ->
-            User = define [F.EncryptedStringField 'password', algorithm: sha1]
+            User = define [F.EncryptedStringField 'password', algorithm: reverse]
 
             alice = yield new User(password: 'password').save()
             alice.password.should.equal 'password'
@@ -66,7 +66,7 @@ describe "Fields", ->
             alice.password.verify('password').should.be.true
 
         it 'saves new value encrypted', co ->
-            User = define [F.EncryptedStringField 'password', algorithm: sha1]
+            User = define [F.EncryptedStringField 'password', algorithm: reverse]
 
             alice = yield new User(password: 'password').save()
             alice.password = 'password2'
@@ -75,7 +75,7 @@ describe "Fields", ->
             alice.password.verify('password2').should.be.true
 
         it "doesn't reencrypt it on save", co ->
-            User = define [F.EncryptedStringField 'password', algorithm: sha1]
+            User = define [F.EncryptedStringField 'password', algorithm: reverse]
 
             alice = yield new User(password: 'password').save()
             alice = yield User.forge(id: alice.id).fetch()
@@ -86,7 +86,7 @@ describe "Fields", ->
             alice.password.encrypted.should.equal check
 
         it 'works w/o salt', co ->
-            User = define [F.EncryptedStringField 'password', algorithm: sha1, salt: false]
+            User = define [F.EncryptedStringField 'password', algorithm: reverse, salt: false]
 
             alice = yield new User(password: 'password').save()
             alice.password.should.equal 'password'
@@ -95,7 +95,7 @@ describe "Fields", ->
             alice.password.verify('password').should.be.true
 
         it 'validates length against plain value', co ->
-            User = define [F.EncryptedStringField 'password', algorithm: sha1, minLength: 8, maxLength: 10]
+            User = define [F.EncryptedStringField 'password', algorithm: reverse, minLength: 8, maxLength: 10]
 
             yield [
                 new User(password: 'foo').validate().should.be.rejected

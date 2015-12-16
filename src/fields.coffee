@@ -173,7 +173,7 @@ class EncryptedString
         else
             salt = new Array(length)
             for i in [0...length]
-                salt.push alphabet[Math.round(Math.random() * alphabet.length)]
+                salt.push alphabet[Math.round(Math.random() * (alphabet.length - 1))]
             salt.join('')
 
 class EncryptedStringField extends Field
