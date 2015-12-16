@@ -49,14 +49,14 @@ Define model using standard bookshelf Model.extend::
     schema: [
       StringField 'username'
       EmailField 'email'
-      HasMany Photo    
+      HasMany Photo
     ]
   }
 
 Schema definition
 -----------------
 
-Schema passed to db.Model.schema method or to a "schema" static field is an array of "schema
+Schema passed to :code:`db.Model.schema` method or to a "schema" static field is an array of "schema
 entities". Each of that entity class defines special methods used in process of augementing and
 initiaizing model.
 
@@ -65,7 +65,7 @@ already saw some of them in examples: StringField, EmailField, HasMany.
 
 You may define your own schema entities that will use some
 custom behaviour.
-  
+
 .. _Bookshelf: http://bookshelfjs.org/
 .. _bookshelf-fields: https://github.com/bogus34/bookshelf-fields
 .. _bookshelf-scopes: https://github.com/pk4media/bookshelf-scopes

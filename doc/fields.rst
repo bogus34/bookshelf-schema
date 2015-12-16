@@ -1,6 +1,8 @@
 Fields
 ======
 
+.. note:: Exported from bookshelf-schema/lib/fields.
+
 Fields enhances models in several ways:
 
 - each field adds an accessor property so instead of calling :code:`model.get('fieldName')` you may
@@ -24,7 +26,7 @@ CoffeeScript
    class User extends db.Model
      tableName: 'users'
      @schema [
-       StringField 'username'
+       StringField 'username', required: true
        EncryptedStringField 'password', algorithm: sha256, minLength: 8
      ]
 
@@ -37,7 +39,7 @@ CoffeeScript
 
 JavaScript
 ^^^^^^^^^^
-     
+
 .. code-block:: js
 
    var Fields = require('bookshelf-schema/lib/fields');
@@ -46,7 +48,7 @@ JavaScript
 
    var User = db.Model.extend( { tableName: 'users' }, {
      schema: [
-       StringField('username'),
+       StringField('username', {required: true}),
        EncryptedStringField('password', {algorithm: sha256, minLength: 8})
      ]
    });
@@ -60,9 +62,9 @@ JavaScript
    });
 
 
-- [1]: model is validated before save
-- [2]: alice.get('username') is called internally
-- [3]: password field is converted to special object when fetched from database. Note that when
+- **[1]**: model is validated before save
+- **[2]**: alice.get('username') is called internally
+- **[3]**: password field is converted to special object when fetched from database. Note that when
   alice is saved it doesn't refetch itself so password isn't parsed and :code:`alice.password`
   remains plain string 'secret-password'
 
@@ -117,6 +119,7 @@ Options:
 - **algorithm**: Function, required - function that will take string as an argument and return encrypted value
 - **salt**: Boolean, default true - use salt when storing this field
 - **saltLength**: Integer, default 5 - salt length
+- **saltAlgorithm**: Function - function used to generate salt. Should take salt length as a parameter.
 - **minLength** | **min_length**: Integer
 - **maxLength** | **max_length**: Integer
 
