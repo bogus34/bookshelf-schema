@@ -334,8 +334,8 @@ class MorphTo extends Relation
     contributeToSchema: (schema) ->
         super
         if @options.columnNames
-            schema.push IntField "#{@options.polymorphicName[0]}_id"
-            schema.push StringField "#{@options.polymorphicName[1]}_type"
+            schema.push IntField "#{@options.polymorphicName[0]}"
+            schema.push StringField "#{@options.polymorphicName[1]}"
         else
             schema.push IntField "#{@polymorphicName}_id"
             schema.push StringField "#{@polymorphicName}_type"
