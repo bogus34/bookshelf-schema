@@ -1,15 +1,70 @@
 Fields
 ======
 
-Fields are enhancing models in several ways:
+Fields enhances models in several ways:
 
 - each field adds an accessor property so instead of calling :code:`model.get('fieldName')` you may
   use :code:`model.fieldName` directly
 
 - each field may convert data when model is parsed or formatted
 
-- model may use field-specific validation before save or explicitly. Validation is supplied with
-  checkit_ module.
+- model may use field-specific validation before save or explicitly. Validation uses the checkit_
+  module.
+
+Examples
+--------
+
+CoffeeScript
+^^^^^^^^^^^^
+
+.. code-block:: coffee
+
+   {StringField, EncryptedStringField} = require 'bookshelf-schema/lib/fields'
+
+   class User extends db.Model
+     tableName: 'users'
+     @schema [
+       StringField 'username'
+       EncryptedStringField 'password', algorithm: sha256, minLength: 8
+     ]
+
+   User.forge(username: 'alice', password: 'secret-password').save()  # [1]
+   .then (alice) ->
+     User.forge(id: alice.id).fetch()
+   .then (alice) ->
+     alice.username.should.equal 'alice'                              # [2]
+     alice.password.verify('secret-password').should.be.true          # [3]
+
+JavaScript
+^^^^^^^^^^
+     
+.. code-block:: js
+
+   var Fields = require('bookshelf-schema/lib/fields');
+   var StringField = Fields.StringField;
+   var EncryptedStringField = Fields.EncryptedStringField;
+
+   var User = db.Model.extend( { tableName: 'users' }, {
+     schema: [
+       StringField('username'),
+       EncryptedStringField('password', {algorithm: sha256, minLength: 8})
+     ]
+   });
+
+   User.forge({username: 'alice', password: 'secret-password'}).save()  # [1]
+   .then( function(alice) {
+     return User.forge(id: alice.id).fetch()
+   }).then( function(aclice) {
+     alice.username.should.equal('alice');                              # [2]
+     alice.password.verify('secret-password').should.be.true;           # [3]
+   });
+
+
+- [1]: model is validated before save
+- [2]: alice.get('username') is called internally
+- [3]: password field is converted to special object when fetched from database. Note that when
+  alice is saved it doesn't refetch itself so password isn't parsed and :code:`alice.password`
+  remains plain string 'secret-password'
 
 Every field options
 -------------------
@@ -51,6 +106,19 @@ EmailField
 
 
 Like a StringField with simple check that value looks like a email address.
+
+EncryptedString
+^^^^^^^^^^^^^^^
+
+.. class: EncryptedString(name, options = {})
+
+Options:
+
+- **algorithm**: Function, required - function that will take string as an argument and return encrypted value
+- **salt**: Boolean, default true - use salt when storing this field
+- **saltLength**: Integer, default 5 - salt length
+- **minLength** | **min_length**: Integer
+- **maxLength** | **max_length**: Integer
 
 NumberField
 ^^^^^^^^^^^
