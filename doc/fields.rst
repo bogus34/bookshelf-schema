@@ -107,10 +107,10 @@ EmailField
 
 Like a StringField with simple check that value looks like a email address.
 
-EncryptedString
-^^^^^^^^^^^^^^^
+EncryptedStringField
+^^^^^^^^^^^^^^^^^^^^
 
-.. class: EncryptedString(name, options = {})
+.. class:: EncryptedStringField(name, options = {})
 
 Options:
 
