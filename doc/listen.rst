@@ -44,13 +44,13 @@ JavaScript
        ]
    });
 
-Callbacks are called in context of model instance.
+Callbacks are called in context of model instance. If callback is a string it should be a model method name.
 
 Base class
 ----------
 
 .. class:: Listen(event, callbacks...)
 
-   :param String event:
-   :param (Function|String) callback:
+   :param String event: Bookshelf event
+   :param (Function|String) callback: callback function or method name
 

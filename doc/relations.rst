@@ -105,6 +105,8 @@ In addition to common collection or model methods accessors provides several hel
 
    Similar to assign but only detaches objects. Obviously it can't detach plain objects.
 
+.. note:: assign, attach and detach are wrapped with transaction
+
 Base class
 ----------
 
@@ -130,6 +132,9 @@ Options:
     - cascade - destroy related models
     - reject - prevent parent model destruction if there is related models
     - detach - detach related models first
+
+    .. note:: Model.destroy is patched so it will wrap callbacks and actual model destroy with
+              transaction
 
 **through**: (Class|String)
     generate "through" relation

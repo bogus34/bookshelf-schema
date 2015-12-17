@@ -20,7 +20,9 @@ CoffeeScript
      @schema [
        StringField 'username'
        BooleanField 'flag'
-       Scope 'flagged', -> @where flag: true     # [1]
+       Scope 'flagged', -> @where flag: true                   # [1]
+       Scope 'nameStartsWith', (prefix) ->                     # [2]
+         @where 'username', 'like', "#{prefix}%"
      ]
 
    class Group extends db.Model
@@ -33,9 +35,14 @@ CoffeeScript
    .then (flaggedUsers) ->
      flaggedUsers.all('flag').should.be.true
 
+   User.flagger().nameStartsWith('a').fetchAll()               # [3]
+   .then (users) ->
+     users.all('flag').should.be.true
+     users.all( (u) -> u.username[0] is 'a' ).should.be.true
+
    Group.forge(name: 'users').fetch()
    .then (group) ->
-     group.$users.flagged().fetch()              # [2]
+     group.$users.flagged().fetch()                            # [4]
    .then (flaggedUsers) ->
      flaggedUsers.all('flag').should.be.true
 
@@ -50,7 +57,12 @@ JavaScript
      schema: [
        StringField('username'),
        BooleanField('flag'),
-       Scope('flagged', function(){ this.where({ flag: true }); })  // [1]
+       Scope('flagged', function(){                           // [1]
+         this.where({ flag: true });
+       }),
+       Scope('nameStartsWith', function(prefix) {             // [2]
+         this.where('username', 'like', prefix + '%')
+       })
      ]
    });
 
@@ -63,15 +75,25 @@ JavaScript
      flaggedUsers.all('flag').should.be.true;
    });
 
+   User.flagged().nameStartsWith('a').fetchAll()              // [3]
+   .then( function(users) {
+     users.all('flag').should.be.true;
+     users.all(function(u){
+       return u.username[0] == 'a';
+     }).should.be.true;
+   });
+
    Group.forge({ name: 'users' }).fetch()
    .then( function(group) {
-     return group.$users.flagged().fetch()                          // [2]
+     return group.$users.flagged().fetch()                    // [4]
    }).then( function(flaggedUsers) {
      flaggedUsers.all('flag').should.be.true;
    });
 
-- **[1]**: scope function invoked in context of query builder, not model
-- **[2]**: scopes from target model are automatically lifted to relation
+- **[1]**: scope invoked in context of query builder, not model
+- **[2]**: scopes are just a functions and may use an arguments
+- **[3]**: scopes may be chained
+- **[4]**: scopes from target model are automatically lifted to relation
 
 Base class
 ----------
