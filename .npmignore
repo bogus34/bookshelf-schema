@@ -1,2 +1,5 @@
 src
 doc
+coverage
+test
+Cakefile
