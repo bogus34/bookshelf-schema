@@ -1,22 +1,8 @@
-Overview
-========
-
-The Bookshelf_ plugin that enhances its models interface.
-
-It provides helpers for dealing with model fields from bookshelf-fields_ and also helpers for
-delaling with relations, scopes and more.
-
-Related plugins
----------------
-
-- bookshelf-fields_ - the ancestor ot this plugin
-- bookshelf-scopes_ - the source of inspiration for scopes helpers
-
 Basic usage
------------
+===========
 
 CoffeeScript
-^^^^^^^^^^^^
+------------
 
 .. highlight:: coffee
 
@@ -42,7 +28,7 @@ Define model::
     ]
 
 JavaScript
-^^^^^^^^^^
+----------
 
 .. highlight:: js
 
@@ -81,10 +67,9 @@ entities". Each of that entity class defines special methods used in process of 
 initiaizing model.
 
 The *bookshelf-schema* comes with several predefined classes adding fields, relations, scopes etc. You
-already saw some of them in examples: StringField, EmailField, HasMany.
+may see some of them in examples above: StringField, EmailField, HasMany.
 
-You may define your own schema entities that will use some
-custom behaviour.
+You may define your own schema entities with custom behaviour.
 
 Plugin options
 --------------
@@ -100,9 +85,6 @@ Options:
   enable model validation
 
 **language**, **labels**, **messages**
-  are passed to checkit_
+  are passed to Checkit_
 
-.. _Bookshelf: http://bookshelfjs.org/
-.. _bookshelf-fields: https://github.com/bogus34/bookshelf-fields
-.. _bookshelf-scopes: https://github.com/pk4media/bookshelf-scopes
-.. _checkit: https://github.com/tgriesser/checkit
+.. _Checkit: https://github.com/tgriesser/checkit

@@ -6,12 +6,21 @@
 bookshelf-schema
 ================
 
+The Bookshelf_ plugin that adds fields, relations, scopes and more to bookshelf models.
+
+Related plugins
+---------------
+
+- bookshelf-fields_ - the ancestor of this plugin
+- bookshelf-scopes_ - the source of inspiration for scopes helpers
+
 Contents:
+---------
 
 .. toctree::
    :maxdepth: 2
 
-   overview
+   basic
    fields
    relations
    scopes
@@ -19,7 +28,11 @@ Contents:
    options
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`search`
+
+.. _Bookshelf: http://bookshelfjs.org/
+.. _bookshelf-fields: https://github.com/bogus34/bookshelf-fields
+.. _bookshelf-scopes: https://github.com/pk4media/bookshelf-scopes

@@ -107,6 +107,15 @@ In addition to common collection or model methods accessors provides several hel
 
 .. note:: assign, attach and detach are wrapped with transaction
 
+Count
+-----
+
+.. function:: Collection.prototype.count()
+
+Bookshelf Collection.prototype.count method is replaced and now *(finally!)* usable with relations and scoped collections. So you can do something like :code:`alice.$photos.count().then (photosCount) -> ...`
+
+And it still passes all the count-related tests provided by Bookshelf.
+
 Base class
 ----------
 

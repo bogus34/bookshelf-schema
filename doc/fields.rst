@@ -10,7 +10,7 @@ Fields enhances models in several ways:
 
 - each field may convert data when model is parsed or formatted
 
-- model may use field-specific validation before save or explicitly. Validation uses the checkit_
+- model may use field-specific validation before save or explicitly. Validation uses the Checkit_
   module.
 
 Examples
@@ -64,9 +64,21 @@ JavaScript
 
 - **[1]**: model is validated before save
 - **[2]**: alice.get('username') is called internally
-- **[3]**: password field is converted to special object when fetched from database. Note that when
-  alice is saved it doesn't refetch itself so password isn't parsed and :code:`alice.password`
-  remains plain string 'secret-password'
+- **[3]**: password field is converted to special object when fetched from database. *Note that when
+  alice is saved it doesn't refetch itself so password isn't parsed and* :code:`alice.password`
+  *remains plain string 'secret-password'*
+
+Validation
+----------
+
+.. function:: Model.prototype.validate()
+
+   :returns: Promise[Checkit.Error]
+
+Model method validate is called automatically before saving or may be called explicitly.
+It takes validation rules added to model by fields and passes them to Checkit_.
+
+You may override this method in your model to add custom validation logic.
 
 Base class
 ----------
@@ -93,7 +105,7 @@ Options:
     used as a field label when formatting error messages
 
 **validations**: Array
-    array of validation rules that checkit_ can understand
+    array of validation rules that Checkit_ can understand
 
 Field classes
 -------------
@@ -225,8 +237,8 @@ Advanced validation
 
     minLength: {value: 10, message: '{{label}} is too short to be valid!'}
 
-- you may add complete checkit validation rules to field with validations option::
+- you may add complete Checkit validation rules to field with validations option::
 
     StringField 'username', validations: [{rule: 'minLength:5'}]
 
-.. _checkit: https://github.com/tgriesser/checkit
+.. _Checkit: https://github.com/tgriesser/checkit
