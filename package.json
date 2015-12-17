@@ -13,6 +13,10 @@
   ],
   "author": "Alexander Bogdanov <andorn@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bogus34/bookshelf-schema"
+  },
   "devDependencies": {
     "bookshelf": ">=0.8.2 <0.10",
     "chai": "^3.3.0",
