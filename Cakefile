@@ -45,7 +45,7 @@ task "test", "run tests", (options) ->
 
     args = args.concat [
         '--require', path.join('test', 'test_helper.coffee'),
-        '--colors', '--bail', '--recursive', 'test'
+        '--colors', '--recursive', 'test'
     ]
     args.unshift '--debug-brk' if options.debug
     spawn mocha, args, 'env': env, 'cwd': process.cwd(), 'stdio': 'inherit'
