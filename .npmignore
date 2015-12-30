@@ -3,3 +3,4 @@ doc
 coverage
 test
 Cakefile
+coffeelint.json
