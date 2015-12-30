@@ -55,7 +55,7 @@ task "test", "run tests", (options) ->
 task "build", "build library", ->
     env = process.env
     spawn coffee,
-        ['--compile', '-o', 'lib/', 'src/']
+        ['--compile', '--bare', '-o', 'lib/', 'src/']
         'env': env, 'cwd': process.cwd(), 'stdio': 'inherit'
 
 task "build-doc", "build documentation", ->
