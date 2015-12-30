@@ -9,7 +9,8 @@ module.exports =
         foreignKey = @relatedData.key 'foreignKey'
 
         try
-            obj = cast.forgeOrFetch this, obj, options, "Can't assign #{obj} to #{model} as a #{relation.name}"
+            obj = cast.forgeOrFetch this, obj, options,
+                "Can't assign #{obj} to #{model} as a #{relation.name}"
             old = model[relation.name]().fetch(options)
 
             Promise.all([old, obj]).then ([old, obj]) ->

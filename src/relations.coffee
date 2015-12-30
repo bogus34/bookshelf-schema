@@ -70,7 +70,7 @@ class Relation
     contributeToSchema: (schema) -> schema.push this
     contributeToModel: (cls) ->
         @model = cls
-        @accessor = @options.accessor || @_deduceAccessorName(@name)
+        @accessor = @options.accessor or @_deduceAccessorName(@name)
         cls::[@name] = @createRelation(cls) unless @name of cls.prototype
         if @option('createProperty', 'createProperties', true)
             @_createProperty(cls)
@@ -289,7 +289,8 @@ class BelongsToMany extends Relation
 class MorphOne extends Relation
     constructor: (model, polymorphicName, options = {}) ->
         return new MorphOne(arguments...) unless this instanceof MorphOne
-        throw new Error('polymorphicName should be string') unless typeof polymorphicName is 'string'
+        unless typeof polymorphicName is 'string'
+            throw new Error('polymorphicName should be string')
         super model, options
         @polymorphicName = polymorphicName
 
@@ -309,7 +310,8 @@ class MorphMany extends Relation
 
     constructor: (model, polymorphicName, options = {}) ->
         return new MorphMany(arguments...) unless this instanceof MorphMany
-        throw new Error('polymorphicName should be string') unless typeof polymorphicName is 'string'
+        unless typeof polymorphicName is 'string'
+            throw new Error('polymorphicName should be string')
         super model, options
         @polymorphicName = polymorphicName
 

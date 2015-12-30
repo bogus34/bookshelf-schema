@@ -27,7 +27,8 @@ module.exports =
                     list = saved.concat other
                     model.triggerThen('attaching', model, relation, list, options)
                     .then => @_originalAttach list, options
-                    .then (result) -> model.triggerThen('attached', model, relation, result, options)
+                    .then (result) ->
+                        model.triggerThen('attached', model, relation, result, options)
             catch e
                 Rejected e
 
@@ -36,4 +37,3 @@ module.exports =
             model.triggerThen('detaching', model, relation, list, options)
             .then => @_originalDetach list, options
             .then (result) -> model.triggerThen('detached', model, relation, result, options)
-

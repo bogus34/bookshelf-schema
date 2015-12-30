@@ -14,7 +14,8 @@ module.exports =
                 currentObjs = model[relation.name]().fetch(options)
 
                 attachObjs = for obj in list
-                    p = cast.forgeOrFetch this, obj, options, "Can't assign #{obj} to #{model} as a #{relation.name}"
+                    p = cast.forgeOrFetch this, obj, options,
+                        "Can't assign #{obj} to #{model} as a #{relation.name}"
                     continue unless p
                     p
 

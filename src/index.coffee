@@ -92,11 +92,11 @@ plugin = (options = {}) -> (db) ->
             attrs
 
         validate: (self, attrs, options = {}) ->
-            if !@constructor.__bookshelf_schema_options.validation \
+            if not @constructor.__bookshelf_schema_options.validation \
             or options.validation is false
                 return utils.Fulfilled()
             json = @toJSON(validating: true)
-            validations = @constructor.__bookshelf_schema?.validations || []
+            validations = @constructor.__bookshelf_schema?.validations or []
             modelValidations = @constructor.__bookshelf_schema?.modelValidations
             options = @_checkitOptions.call(this)
             checkit = CheckIt(validations, options).run(json)
@@ -114,7 +114,8 @@ plugin = (options = {}) -> (db) ->
                     @_applyScopes()
                     super
 
-        for method in ['hasMany', 'hasOne', 'belongsToMany', 'morphOne', 'morphMany', 'belongsTo', 'through']
+        for method in ['hasMany', 'hasOne', 'belongsToMany',
+        'morphOne', 'morphMany', 'belongsTo', 'through']
             do (method) ->
                 Model::[method] = ->
                     related = super
@@ -146,7 +147,7 @@ plugin = (options = {}) -> (db) ->
         _applyScopes: ->
             if @_appliedScopes
                 for [name, scope, args] in @_appliedScopes
-                    @query (qb) => scope.apply(qb, args)
+                    @query (qb) -> scope.apply(qb, args)
                 delete @_appliedScopes
 
         _liftRelatedScopes: (to) ->

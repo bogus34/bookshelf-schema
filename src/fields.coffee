@@ -144,7 +144,9 @@ class EmailField extends StringField
         result.push @_withMessage 'email'
         result
 
+# coffeelint: disable=max_line_length
 alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!$%^&*()_+|~-=`{}[]:;<>?,./'
+# coffeelint: enable=max_line_length
 class EncryptedString
     constructor: (@algorithm, @encrypted, @plain, @options = {}) ->
         @options.salt ?= true
@@ -163,9 +165,9 @@ class EncryptedString
         if @options.salt
             salt = @encrypted.substr(0, @options.saltLength)
             checked = @encrypted.substr(@options.saltLength)
-            @algorithm(salt + value) == checked
+            @algorithm(salt + value) is checked
         else
-            @algorithm(value) == @encrypted
+            @algorithm(value) is @encrypted
 
     _genSalt: (length) ->
         if @options.saltAlgorithm
@@ -286,7 +288,7 @@ class DateTimeField extends Field
         result
 
     parse: (attrs) ->
-         attrs[@name] = new Date(attrs[@name]) if attrs[@name]?
+        attrs[@name] = new Date(attrs[@name]) if attrs[@name]?
 
     format: (attrs) ->
         attrs[@name] = new Date(attrs[@name]) if attrs[@name]? and attrs[@name] not instanceof Date
