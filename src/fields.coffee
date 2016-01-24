@@ -144,44 +144,56 @@ class EmailField extends StringField
         result.push @_withMessage 'email'
         result
 
-# coffeelint: disable=max_line_length
-alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!$%^&*()_+|~-=`{}[]:;<>?,./'
-# coffeelint: enable=max_line_length
 class EncryptedString
-    constructor: (@algorithm, @encrypted, @plain, @options = {}) ->
-        @options.salt ?= true
-        @options.saltLength ?= 5
+    constructor: (@encrypted, @plain, @options = {}) ->
+        @options.saltLength ?= 16
 
     encrypt: ->
-        if @options.salt
-            salt = @_genSalt(@options.saltLength)
-            @encrypted = salt + @algorithm(salt + @plain)
-        else
-            @encrypted = @algorithm(@plain)
-
-        @encrypted
+        @_genSalt(@options.saltLength)
+        .then (salt) =>
+            @_genHash(@plain, salt)
+            .then (hash) =>
+                @encrypted = salt.toString('base64') + '$' + hash.toString('base64')
 
     verify: (value) ->
-        if @options.salt
-            salt = @encrypted.substr(0, @options.saltLength)
-            checked = @encrypted.substr(@options.saltLength)
-            @algorithm(salt + value) is checked
-        else
-            @algorithm(value) is @encrypted
+        checked = @encrypted.split('$')
+        salt = new Buffer checked[0], 'base64'
+        @_genHash(value, salt).then (hash) ->
+            hash.toString('base64') is checked[1]
 
     _genSalt: (length) ->
         if @options.saltAlgorithm
-            @options.saltAlgorithm(length)
+            @options.saltAlgorithm length, callback
         else
-            salt = new Array(length)
-            for i in [0...length]
-                salt.push alphabet[Math.round(Math.random() * (alphabet.length - 1))]
-            salt.join('')
+            crypto = require 'crypto'
+            new Promise (resolve, reject) ->
+                crypto.randomBytes length, (err, salt) ->
+                    if err
+                        reject err
+                    else
+                        resolve salt
+
+    _genHash: (plain, salt) ->
+        iterations = @options.iterations or 1000
+        keylen = @options.length or 512
+
+        if typeof @options.algorithm is 'function'
+            @options.algorithm plain, salt, iterations, keylen
+        else
+            crypto = require 'crypto'
+            digest = if typeof @options.algorithm is 'string'
+                @options.algorithm
+            else
+                'sha256'
+            new Promise (resolve, reject) ->
+                crypto.pbkdf2 plain, salt, iterations, keylen, digest, (err, hash) ->
+                    if err
+                        reject err
+                    else
+                        resolve hash
 
 class EncryptedStringField extends Field
     constructor: (name, options = {}) ->
-        unless typeof options.algorithm is 'function'
-            throw new Error('algorithm is required for EncryptedStringField')
         return new EncryptedStringField(name, options) unless this instanceof EncryptedStringField
         super name, options
 
@@ -191,28 +203,20 @@ class EncryptedStringField extends Field
         @acceptsRule result, ['maxLength', 'max_length'], @_validateMaxLenghth
         result
 
+    initialize: (instance) ->
+        instance.on 'saving', @_onSaving
+
     parse: (attrs, options) ->
         return attrs unless attrs[@name]?
-        attrs[@name] = new EncryptedString(@options.algorithm, attrs[@name], null, @options)
+        attrs[@name] = new EncryptedString(attrs[@name], null, @options)
         attrs
 
     format: (attrs, options) ->
         me = attrs[@name]
         return attrs unless me?
-
-        attrs[@name] = switch
-            when me instanceof EncryptedString and me.plain?
-                # encrypt it
-                me.encrypt()
-            when me instanceof EncryptedString
-                # use encrypted
-                me.encrypted
-            when typeof me is 'string'
-                # the only case when encryptes field would be string is if new model is forged
-                # or field is set to new value
-                # reencrypt it
-                enc = new EncryptedString(@options.algorithm, null, me, @options)
-                enc.encrypt()
+        unless me instanceof EncryptedString and me.encrypted
+            throw new Error("Field @name should be encryted first")
+        attrs[@name] = me.encrypted
         attrs
 
     _validateMinLenghth: (value, minLength) ->
@@ -224,6 +228,14 @@ class EncryptedStringField extends Field
         return if value instanceof EncryptedString and not value.plain?
         value = if value instanceof EncryptedString then value.plain else value
         value.length <= maxLength
+
+    _onSaving: (instance, attrs, options) =>
+        me = attrs[@name] or instance.attributes[@name]
+        return unless me?
+        return if me instanceof EncryptedString and not me.plain
+        if me not instanceof EncryptedString
+            me = attrs[@name] = instance.attributes[@name] = new EncryptedString null, me, @options
+        me.encrypt()
 
 class NumberField extends Field
     constructor: (name, options) ->

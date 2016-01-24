@@ -27,7 +27,7 @@ CoffeeScript
      tableName: 'users'
      @schema [
        StringField 'username', required: true
-       EncryptedStringField 'password', algorithm: sha256, minLength: 8
+       EncryptedStringField 'password', minLength: 8
      ]
 
    User.forge(username: 'alice', password: 'secret-password').save()  # [1]
@@ -35,7 +35,7 @@ CoffeeScript
      User.forge(id: alice.id).fetch()
    .then (alice) ->
      alice.username.should.equal 'alice'                              # [2]
-     alice.password.verify('secret-password').should.be.true          # [3]
+     alice.password.verify('secret-password').should.become.true      # [3]
 
 JavaScript
 ^^^^^^^^^^
@@ -49,7 +49,7 @@ JavaScript
    var User = db.Model.extend( { tableName: 'users' }, {
      schema: [
        StringField('username', {required: true}),
-       EncryptedStringField('password', {algorithm: sha256, minLength: 8})
+       EncryptedStringField('password', {minLength: 8})
      ]
    });
 
@@ -58,15 +58,13 @@ JavaScript
      return User.forge({id: alice.id}).fetch()
    }).then( function(aclice) {
      alice.username.should.equal('alice');                              // [2]
-     alice.password.verify('secret-password').should.be.true;           // [3]
+     alice.password.verify('secret-password').should.become.true;       // [3]
    });
 
 
 - **[1]**: model is validated before save
 - **[2]**: alice.get('username') is called internally
-- **[3]**: password field is converted to special object when fetched from database. *Note that when
-  alice is saved it doesn't refetch itself so password isn't parsed and* :code:`alice.password`
-  *remains plain string 'secret-password'*
+- **[3]**: password field is converted to special object when fetched from database.
 
 Validation
 ----------
@@ -138,17 +136,24 @@ EncryptedStringField
 
 Options:
 
-**algorithm**: Function, required
-    function that will take string as an argument and return encrypted value
+**algorithm**: String | Function
+    Function: function that will take string, salt, iteration count and key length as an arguments and
+    return Promise with encrypted value
 
-**salt**: Boolean, default true
-    use salt when storing this field
+    String: algorithm name passed to crypto.pbkdf2
 
-**saltLength**: Integer, default 5
-    salt length
+**iterations**: Integer
+    iterations count passed to encryption function
+
+**keylen**: Integer
+    key length passed to encryption function
+
+**saltLength**: Integer, default 16
+    salt length in bytes
 
 **saltAlgorithm**: Function
-    function used to generate salt. Should take salt length as a parameter.
+    function used to generate salt. Should take salt length as a parameter and return a Promise with
+    salt value
 
 **minLength** | **min_length**: Integer
     validate that unencrypted field value length is not lesser than minLength value
@@ -157,6 +162,13 @@ Options:
 **maxLength** | **max_length**: Integer
     validate that unencrypted field value length is not greater than maxLength value
     checked only when unencrypted value available
+
+.. class:: EncryptedString
+
+   Internal class used to handle encrypted value.
+
+EncryptedStringField value became EncryptedString when saved. It looses it's plain value.
+You should use method :code:`verify(value) : Promise` to verify value against saved string.
 
 NumberField
 ^^^^^^^^^^^

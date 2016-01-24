@@ -55,27 +55,26 @@ describe "Fields", ->
             ]
 
     describe 'EncryptedStringField', ->
-        reverse = (s) -> s.split().reverse().join('')
         it 'save its value encrypted', co ->
-            User = define [F.EncryptedStringField 'password', algorithm: reverse]
+            User = define [F.EncryptedStringField 'password', iterations: 1]
 
             alice = yield new User(password: 'password').save()
-            alice.password.should.equal 'password'
+            alice.password.plain.should.equal 'password'
             alice = yield User.forge(id: alice.id).fetch()
             expect(alice.password.plain).to.be.null
-            alice.password.verify('password').should.be.true
+            alice.password.verify('password').should.become true
 
         it 'saves new value encrypted', co ->
-            User = define [F.EncryptedStringField 'password', algorithm: reverse]
+            User = define [F.EncryptedStringField 'password', iterations: 1]
 
             alice = yield new User(password: 'password').save()
             alice.password = 'password2'
             yield alice.save()
             alice = yield User.forge(id: alice.id).fetch()
-            alice.password.verify('password2').should.be.true
+            alice.password.verify('password2').should.become.true
 
         it "doesn't reencrypt it on save", co ->
-            User = define [F.EncryptedStringField 'password', algorithm: reverse]
+            User = define [F.EncryptedStringField 'password', iterations: 1]
 
             alice = yield new User(password: 'password').save()
             alice = yield User.forge(id: alice.id).fetch()
@@ -85,17 +84,8 @@ describe "Fields", ->
             alice = yield User.forge(id: alice.id).fetch()
             alice.password.encrypted.should.equal check
 
-        it 'works w/o salt', co ->
-            User = define [F.EncryptedStringField 'password', algorithm: reverse, salt: false]
-
-            alice = yield new User(password: 'password').save()
-            alice.password.should.equal 'password'
-            alice = yield User.forge(id: alice.id).fetch()
-            expect(alice.password.plain).to.be.null
-            alice.password.verify('password').should.be.true
-
         it 'validates length against plain value', co ->
-            User = define [F.EncryptedStringField 'password', algorithm: reverse, minLength: 8, maxLength: 10]
+            User = define [F.EncryptedStringField 'password', iterations: 1, minLength: 8, maxLength: 10]
 
             yield [
                 new User(password: 'foo').validate().should.be.rejected
@@ -255,4 +245,3 @@ describe "Fields", ->
                 new User(additional_data: 42).validate().should.be.rejected
                 new User(additional_data: 'not a json').validate().should.be.rejected
             ]
-

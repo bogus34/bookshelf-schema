@@ -17,7 +17,7 @@ class User extends db.Model
     tableName: 'users'
     @schema [
         EmailField 'email'
-        EncryptedStringField 'password', algorithm: sha512
+        EncryptedStringField 'password'
         BooleanField 'active'
         HasMany 'Photo'
         Scope 'isActive', -> @where active: true
@@ -30,7 +30,7 @@ or
 User = db.Model.extend({ tableName: 'users'}, {
     schema: [
         EmailField('email'),
-        EncryptedStringField('password', algorithm: sha512),
+        EncryptedStringField('password'),
         BooleanField('active'),
         HasMany('Photo'),
         Scope('isActive', function(){ return this.where({active: true}; }))
