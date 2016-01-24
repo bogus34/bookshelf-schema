@@ -9,8 +9,8 @@ Like a [bookshelf-fields](https://github.com/bogus34/bookshelf-fields) but bette
 
 [Documentation on readthedoc.org](http://bookshelf-schema.readthedocs.org/)
 
-Teaser
-------
+Usage
+-----
 
 ```coffee
 class User extends db.Model
@@ -37,3 +37,12 @@ User = db.Model.extend({ tableName: 'users'}, {
     ]
 });
 ```
+
+Installation
+------------
+
+`npm install bookshelf-schema`
+
+And then 
+
+`bookshelf.plugin require('bookshelf-schema')()`
