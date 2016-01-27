@@ -47,8 +47,13 @@
 ###
 
 pluralize = require 'pluralize'
-{IntField, StringField} = require './fields'
+{Field, IntField, StringField} = require './fields'
 {Fulfilled, Rejected, promiseFinally, values, pluck, upperFirst, lowerFirst} = require './utils'
+
+pushField = (schema, name, factory) ->
+    for f in schema when f instanceof Field
+        return if f.name is name
+    schema.push factory()
 
 class Relation
     @multiple: false
@@ -170,16 +175,18 @@ class Relation
 
         Object.defineProperty cls.prototype, @accessor, spec
 
-    _deduceName: ->
-        return @options.name if @options.name?
-        relatedModelName = if typeof @relatedModel is 'string'
+    _relatedModelName: ->
+        if typeof @relatedModel is 'string'
             @relatedModel
         else
             @relatedModel.name
+
+    _deduceName: ->
+        return @options.name if @options.name?
         if @constructor.multiple
-            pluralize lowerFirst(relatedModelName)
+            pluralize lowerFirst(@_relatedModelName())
         else
-            lowerFirst(relatedModelName)
+            lowerFirst(@_relatedModelName())
 
     _deduceAccessorName: -> "#{@pluginOption('accessorPrefix', '$')}#{@name}"
 
@@ -202,7 +209,8 @@ class BelongsTo extends Relation
 
     contributeToSchema: (schema) ->
         super
-        schema.push IntField "#{@name}_id"
+        foreignKey = @options.foreignKey or "#{@_relatedModelName().toLowerCase()}_id"
+        pushField schema, foreignKey, -> IntField foreignKey
 
     @injectedMethods: require './relations/belongs_to'
 
@@ -335,12 +343,16 @@ class MorphTo extends Relation
 
     contributeToSchema: (schema) ->
         super
+
         if @options.columnNames
-            schema.push IntField "#{@options.polymorphicName[0]}"
-            schema.push StringField "#{@options.polymorphicName[1]}"
+            idName = @options.polymorphicName[0]
+            typeName = @options.polymorphicName[1]
         else
-            schema.push IntField "#{@polymorphicName}_id"
-            schema.push StringField "#{@polymorphicName}_type"
+            idName = "#{@polymorphicName}_id"
+            typeName = "#{@polymorphicName}_type"
+
+        pushField schema, idName, -> IntField idName
+        pushField schema, typeName, -> StringField typeName
 
     _destroyReject: (model, options) ->
         polymorphicId = if @options.columnNames

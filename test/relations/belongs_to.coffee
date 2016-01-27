@@ -164,3 +164,25 @@ describe "Relations", ->
 
                 [alice, [photo1, _]] = yield fixtures.alice()
                 yield photo1.destroy().should.be.fulfilled
+
+        describe 'tries to assign correct name to foreign key field', ->
+            beforeEach ->
+                class User extends db.Model
+                    tableName: 'users'
+
+                class Photo extends db.Model
+                    tableName: 'photos'
+
+            it 'uses <modelName>_id by default', ->
+                Photo.schema [
+                    BelongsTo User
+                ]
+
+                Photo.prototype.hasOwnProperty('user_id').should.be.true
+
+            it 'uses foreign key if defined', ->
+                Photo.schema [
+                    BelongsTo User, foreignKey: 'userId'
+                ]
+
+                Photo.prototype.hasOwnProperty('userId').should.be.true
