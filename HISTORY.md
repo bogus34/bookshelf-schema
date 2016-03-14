@@ -1,3 +1,8 @@
+0.2.2
+=====
+
+* Try to use related table name in addition to other methods to deduce relation name
+
 0.2.1
 =====
 

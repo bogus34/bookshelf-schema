@@ -75,6 +75,19 @@ JavaScript
 
 - **[3]** $photos internally calls :code:`alice.related('photos')` and returns fetched collection
 
+Relation name
+-------------
+
+Actual relation name (the name of generated function) is generated from one of the following, sequently:
+
+- name passed as an option to relation constructor
+- string, passed as a relation if used with registry
+- relatedModel.name or relatedModel.displayName
+- camelized and singularized related table name
+
+Additionally if name isn't passed as an option relation name is pluralized for the multiple
+relations and its first letter is converted to lower case.
+
 Accessor helper methods
 -----------------------
 

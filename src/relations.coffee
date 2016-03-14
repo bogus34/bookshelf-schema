@@ -46,7 +46,7 @@
 #
 ###
 
-pluralize = require 'pluralize'
+{pluralize, singularize, camelize} = require 'inflection'
 {Field, IntField, StringField} = require './fields'
 {Fulfilled, Rejected, promiseFinally, values, pluck, upperFirst, lowerFirst} = require './utils'
 
@@ -176,13 +176,21 @@ class Relation
         Object.defineProperty cls.prototype, @accessor, spec
 
     _relatedModelName: ->
-        if typeof @relatedModel is 'string'
-            @relatedModel
-        else
-            @relatedModel.name
+        switch
+            when typeof @relatedModel is 'string'
+                @relatedModel
+            when @relatedModel.name
+                @relatedModel.name
+            when @relatedModel.displayName
+                @relatedModel.displayName
+            when @relatedModel::tableName
+                singularize camelize @relatedModel::tableName
+            else
+                throw new Error("Can't deduce related model name, try to pass \"name\" as an option")
 
     _deduceName: ->
         return @options.name if @options.name?
+
         if @constructor.multiple
             pluralize lowerFirst(@_relatedModelName())
         else

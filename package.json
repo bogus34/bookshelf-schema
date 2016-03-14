@@ -1,6 +1,6 @@
 {
   "name": "bookshelf-schema",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Plugin for adding schema to Bookshelf models",
   "main": "lib/index.js",
   "scripts": {
@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "checkit": "^0.6.0",
-    "pluralize": "^1.2.1"
+    "inflection": "^1.8.0"
   },
   "peerDependencies": {
     "bookshelf": ">=0.8.2 <0.10"
