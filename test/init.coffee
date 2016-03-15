@@ -3,9 +3,8 @@ Bookshelf = require 'bookshelf'
 Schema = require '../src/'
 
 db = null
-init = ->
-    return db if db?
 
+initDb = ->
     db_variant = process.env.BOOKSHELF_SCHEMA_TESTS_DB_VARIANT
     db_variant ?= 'sqlite'
 
@@ -16,6 +15,7 @@ init = ->
                 debug: process.env.BOOKSHELF_SCHEMA_TESTS_DEBUG?
                 connection:
                     filename: ':memory:'
+                useNullAsDefault: true
         when 'pg', 'postgres'
             Knex
                 client: 'pg'
@@ -26,9 +26,14 @@ init = ->
                     password: 'test'
                     database: 'test'
                     charset: 'utf8'
+                useNullAsDefault: true
         else throw new Error "Unknown db variant: #{db_variant}"
 
     db = Bookshelf knex
+
+init = ->
+    return db if db?
+    db = initDb()
     db.plugin Schema()
     db
 
@@ -102,6 +107,7 @@ inviters = co ->
         table.integer 'user_id'
 
 module.exports =
+    initDb: initDb
     init: init
     truncate: truncate
     users: users

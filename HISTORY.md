@@ -1,3 +1,8 @@
+0.2.3
+=====
+
+* Work around weird __proto__ manipulations used in Bookshelf.Model.extend (issue #4)
+
 0.2.2
 =====
 

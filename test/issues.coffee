@@ -42,16 +42,68 @@ describe "Issues", ->
             db.model 'Journal', JournalModel
 
         it 'should deduce relation name more properly', ->
-            # It should not throw
-            JournalModel.schema [
-                HasMany JournalItemsModel
-            ]
+            expect( ->
+                JournalModel.schema [
+                    HasMany JournalItemsModel
+                ]
+            ).not.to.throw()
 
-        it 'should allow to use camelcase name for relations', co ->
+        it 'should allow to use camelcase name for relations', ->
             JournalModel.schema [
                 HasMany JournalItemsModel, name: 'JournalItems'
             ]
 
             journal = yield JournalModel.forge().save()
 
-            yield JournalModel.forge(id: journal.id).fetch(withRelated: ['JournalItems'])
+            JournalModel.forge(id: journal.id).fetch(withRelated: ['JournalItems']).should.be.fullfiled
+
+    describe '#4', ->
+        describe 'should work with plugins that extends Model', co ->
+            it 'added after Schema', ->
+                db.plugin 'virtuals'
+                db.plugin 'visibility'
+
+                yield init.users()
+
+                class User extends db.Model
+                    tableName: 'users'
+
+                    schema: [
+                        Fields.StringField 'username'
+                    ]
+
+                User.forge(id: 1).fetch().should.be.fullfiled
+
+            it 'added before Schema', co ->
+                db = init.initDb()
+                db.plugin 'virtuals'
+                db.plugin 'visibility'
+                db.plugin Schema()
+
+                yield init.users()
+
+                class User extends db.Model
+                    tableName: 'users'
+
+                    schema: [
+                        Fields.StringField 'username'
+                    ]
+
+                User.forge(id: 1).fetch().should.be.fullfiled
+
+            it 'added around Schema', co ->
+                db = init.initDb()
+                db.plugin 'virtuals'
+                db.plugin Schema()
+                db.plugin 'visibility'
+
+                yield init.users()
+
+                class User extends db.Model
+                    tableName: 'users'
+
+                    schema: [
+                        Fields.StringField 'username'
+                    ]
+
+                User.forge(id: 1).fetch().should.be.fullfiled

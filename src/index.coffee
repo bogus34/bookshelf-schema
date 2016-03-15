@@ -31,7 +31,18 @@ plugin = (options = {}) -> (db) ->
     options.createProperties ?= true
     options.validation ?= true
 
-    originalModel = db.Model
+    #
+    # Bookshelf.Model.extend manipulates __proto__ instead of copying static
+    # methods to child class and it breaks normal CoffeeScript inheritance.
+    # So if any plugin added before Schema extends Model, we have a problem.
+    # This function is trying to fix it.
+    #
+    fixInheritance = (base, cls) ->
+        proto = base.__proto__
+        while typeof proto is 'function'
+            for own k, v of proto when not cls.hasOwnProperty(k)
+                cls[k] = v
+            proto = proto.__proto__
 
     buildSchema = (entities) ->
         schema = []
@@ -52,10 +63,23 @@ plugin = (options = {}) -> (db) ->
             contributeToModel this, @__schema
 
         @extend: (props, statics) ->
-            if statics.schema
+            if statics?.schema
                 schema = statics.schema
                 delete statics.schema
-            cls = originalModel.extend.call this, props, statics
+
+            #
+            # As with fixInheritance but for the case when someone extends Model after Schema
+            # We copy static properties over to fix CoffeeScript class inheritance after it.
+            #
+            ctor = if props.hasOwnProperty 'constructor'
+                props.constructor
+            else
+                -> Model.apply(this, arguments)
+            ctor[k] = v for own k, v of Model
+            props.constructor = ctor
+
+            cls = super props, statics
+
             return cls unless schema
             cls.schema schema
             cls
@@ -156,6 +180,8 @@ plugin = (options = {}) -> (db) ->
                 for e in target.__schema when e.liftScope?
                     e.liftScope(to)
 
+    fixInheritance db.Model, Model
+
     class Collection extends db.Collection
         for method in ['fetch', 'fetchOne']
             do (method) ->
@@ -188,6 +214,8 @@ plugin = (options = {}) -> (db) ->
             result
 
         _applyScopes: Model::_applyScopes
+
+    fixInheritance db.Collection, Collection
 
     db.Model = Model
     db.Collection = Collection
