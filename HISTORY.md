@@ -2,6 +2,7 @@
 =====
 
 * Work around weird __proto__ manipulations used in Bookshelf.Model.extend (issue #4)
+* Allow Bookshelf and Knex v0.10
 
 0.2.2
 =====
