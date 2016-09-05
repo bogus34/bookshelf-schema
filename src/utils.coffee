@@ -10,7 +10,7 @@ utils =
             throw e
         )
     ensurePromise: (x) ->
-        if typeof x.then is 'function'
+        if typeof x?.then is 'function'
             x
         else
             utils.Fulfilled(x)

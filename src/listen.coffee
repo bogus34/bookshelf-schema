@@ -28,9 +28,13 @@ class Listen
             (args...) ->
                 ensurePromise(condition(args...))
                 .then (result) ->
-                    f(args...) for f in fns if result
+                    if result
+                        results = (ensurePromise(f(args...)) for f in fns)
+                        Promise.all results
         else
-            (args...) -> f(args...) for f in fns
+            (args...) ->
+                results = (ensurePromise(f(args...)) for f in fns)
+                Promise.all results
 
         instance.on @event, listener
 

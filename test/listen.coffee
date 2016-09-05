@@ -61,3 +61,40 @@ describe 'Listen', ->
         f3.should.have.been.called.once
         f2.should.not.have.been.called()
         f4.should.not.have.been.called()
+
+    it 'allows listeners to return Promise and waits for them', co ->
+        order = []
+        f1 = spy -> order.push 'f1'
+        f3 = spy -> order.push 'f3'
+        f2 = spy ->
+            new Promise (resolve, reject) ->
+                setTimeout ->
+                    f1.should.have.been.called.once
+                    f3.should.not.have.been.called()
+                    order.push 'f2'
+                    resolve()
+                , 30
+
+        User.schema [
+            Listen 'saving', f1, f2
+            Listen 'saved', f3
+        ]
+
+        yield new User(username: 'alice').save()
+        f1.should.have.been.called.once
+        f2.should.have.been.called.once
+        f3.should.have.been.called.once
+        order.should.deep.equal ['f1', 'f2', 'f3']
+
+    it 'breaks callback chain on rejected promise', co ->
+        f1 = spy -> Promise.reject()
+        f2 = spy()
+
+        User.schema [
+            Listen 'saving', f1
+            Listen 'saved', f2
+        ]
+
+        yield new User(username: 'alice').save().should.be.rejected
+        f1.should.have.been.called.once
+        f2.should.not.have.been.called()

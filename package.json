@@ -1,6 +1,6 @@
 {
   "name": "bookshelf-schema",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Plugin for adding schema to Bookshelf models",
   "main": "lib/index.js",
   "scripts": {
