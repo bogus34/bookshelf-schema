@@ -161,7 +161,7 @@ plugin = (options = {}) -> (db) ->
 
         _handleDestroy: (model, options = {}) ->
             # somehow query passed with options will break some of subsequent queries
-            options = utils.clone options, expect: ['query']
+            options = utils.clone options, except: ['query']
             options.destroyingCache = "#{model.tableName}:#{model.id}": utils.Fulfilled()
             handled = (e.onDestroy?(model, options) for e in @constructor.__schema)
             Promise.all(handled)

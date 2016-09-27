@@ -30,8 +30,8 @@ utils =
             for k of obj
                 res[k] = obj[k]
 
-        if options.expect
-            for k in options.expect
+        if options.except
+            for k in options.except
                 delete res[k]
 
         res
