@@ -93,6 +93,21 @@ describe "Relations", ->
                 ]
                 bob.$photos.length.should.equal 2
                 bob.$photos.pluck('filename').sort().should.deep.equal ['photo1.jpg', 'photo3.jpg']
+                alice.$photos.length.should.equal 1
+                alice.$photos.pluck('filename').should.deep.equal ['photo2.jpg']
+
+            it 'can attach plain objects and ids', co ->
+                [alice, [photo1, photo2]] = yield fixtures.alice()
+                bob = yield new User(username: 'bob').save()
+                yield bob.$photos.attach [{filename: 'photo3.jpg'}, photo1.id]
+                [bob, alice] = yield [
+                     User.forge(id: bob.id).fetch(withRelated: 'photos')
+                     User.forge(id: alice.id).fetch(withRelated: 'photos')
+                ]
+                bob.$photos.length.should.equal 2
+                bob.$photos.pluck('filename').sort().should.deep.equal ['photo1.jpg', 'photo3.jpg']
+                alice.$photos.length.should.equal 1
+                alice.$photos.pluck('filename').should.deep.equal ['photo2.jpg']
 
             it 'detach all related objects when empty list assigned', co ->
                 [alice, _] = yield fixtures.alice()

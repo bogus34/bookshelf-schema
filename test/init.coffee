@@ -46,7 +46,7 @@ users = co ->
     yield knex.schema.createTable 'users', (table) ->
         table.increments('id').primary()
         table.string 'username', 255
-        table.string 'password', 255
+        table.string 'password', 1024
         table.string 'email', 255
         table.float 'code'
         table.boolean 'flag'

@@ -64,10 +64,18 @@ module.exports =
                 loadUnloaded = if unloaded.length is 0
                     Fulfilled @model.collection()
                 else
-                    @model.collection().where(@model.idAttribute, 'in', unloaded).fetch(options)
+                    @model.collection()
+                        .query('where', @idAttribute(), 'in', unloaded)
+                        .fetch(options)
 
-                loadUnloaded.then (unloaded) =>
-                    list = unloaded.models.concat models
+                createNew = if created.length is 0
+                    Fulfilled []
+                else
+                    Promise.all created.map (obj) -> obj.save(null, options)
+
+                Promise.all([loadUnloaded, createNew]).then ([unloaded, createNew]) =>
+                    list = models.concat unloaded.models, createNew
+
                     model.triggerThen('attaching', model, relation, list, options)
                     .then =>
                         pending = for obj in list
