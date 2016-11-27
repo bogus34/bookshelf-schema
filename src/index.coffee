@@ -53,6 +53,14 @@ plugin = (options = {}) -> (db) ->
         e.contributeToModel(cls) for e in entities
         undefined
 
+    applyAliases = (aliases, attrs) ->
+        attrs = utils.clone attrs
+        for name, column of aliases
+            if attrs[name] and not attrs[column]
+                attrs[column] = attrs[name]
+                delete attrs[name]
+        attrs
+
     class Model extends db.Model
         @db: db
         @transaction: db.transaction.bind db
@@ -84,12 +92,20 @@ plugin = (options = {}) -> (db) ->
             cls.schema schema
             cls
 
+        constructor: (attributes, options) ->
+            @constructor.__schema ?= []
+            return super unless attributes
+
+            if @constructor.__bookshelf_schema?.aliases
+                attributes = applyAliases @constructor.__bookshelf_schema.aliases, attributes
+
+            super attributes, options
+
         initialize: ->
             super
             @initSchema()
 
         initSchema: ->
-            @constructor.__schema ?= []
             e.initialize?(this) for e in @constructor.__schema
             if @constructor.__bookshelf_schema_options.validation
                 @on 'saving', @validate, this
@@ -115,6 +131,17 @@ plugin = (options = {}) -> (db) ->
                     f attrs, options
             attrs
 
+        toJSON: (options = {}) ->
+            json = super
+
+            if not options.validating and
+            not options.use_columns and
+            @constructor.__bookshelf_schema.aliases
+                aliases = @constructor.__bookshelf_schema.aliases
+                json = applyAliases utils.invert(aliases), json
+
+            json
+
         validate: (self, attrs, options = {}) ->
             if not @constructor.__bookshelf_schema_options.validation \
             or options.validation is false
@@ -127,6 +154,20 @@ plugin = (options = {}) -> (db) ->
             if @modelValidations and @modelValidations.length > 0
                 checkit = checkit.then -> CheckIt(all: model_validations, options).run(all: json)
             checkit
+
+        save: (key, value, options) ->
+            return super unless @constructor.__bookshelf_schema?.aliases
+
+            if not key? or typeof key is 'object'
+                attrs = if key? then utils.clone(key) else {}
+                options = utils.clone(value) or {}
+            else
+                attrs = { "#{key}": value }
+                options = utils.clone(options) or {}
+
+            attrs = applyAliases @constructor.__bookshelf_schema.aliases, attrs
+
+            super attrs, options
 
         destroy: (options) ->
             utils.forceTransaction Model.transaction, options, (options) =>

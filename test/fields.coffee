@@ -245,3 +245,52 @@ describe "Fields", ->
                 new User(additional_data: 42).validate().should.be.rejected
                 new User(additional_data: 'not a json').validate().should.be.rejected
             ]
+
+    describe 'Virtuals and aliases', ->
+        it 'sets column value through alias', ->
+            User = define [F.StringField 'login', column: 'username']
+
+            alice = new User(login: 'alice')
+            alice.get('username').should.equal 'alice'
+
+        it 'validates aliased fields', co ->
+            User = define [F.StringField 'login', column: 'username', min_length: 5, max_length: 10]
+            User.__bookshelf_schema.validations.username.should.deep.equal ['minLength:5', 'maxLength:10']
+            yield [
+                new User(login: 'foo').validate().should.be.rejected
+                new User(login: 'Some nickname that is longer then 10 characters').validate().should.be.rejected
+                new User(login: 'justfine').validate().should.be.fulfilled
+            ]
+
+        it 'saves model with alias', co ->
+            User = define [F.StringField 'login', column: 'username']
+
+            alice = yield User.forge(login: 'alice').save()
+            alice = yield User.forge(id: alice.id).fetch()
+
+            alice.login.should.equal 'alice'
+
+        it 'saves model with aliased field passed as an attribute', co ->
+            User = define [F.StringField 'login', column: 'username']
+
+            alice = yield User.forge().save(login: 'alice')
+            alice = yield User.forge(id: alice.id).fetch()
+
+            alice.login.should.equal 'alice'
+
+        it 'saves model with aliased field using patch', co ->
+            User = define [F.StringField 'login', column: 'username']
+
+            alice = yield User.forge(login: 'alice').save()
+            yield User.forge(id: alice.id).save({login: 'annie'}, {patch: true})
+            alice = yield User.forge(id: alice.id).fetch()
+
+            alice.login.should.equal 'annie'
+
+        it 'uses aliases in json', co ->
+            User = define [F.StringField 'login', column: 'username']
+
+            alice = yield User.forge(login: 'alice').save()
+
+            alice.toJSON().should.have.property('login')
+            alice.toJSON().login.should.equal 'alice'

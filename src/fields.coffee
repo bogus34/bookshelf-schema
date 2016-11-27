@@ -9,6 +9,7 @@ class Field
     constructor: (name, options = {}) ->
         return new Field(name) unless this instanceof Field
         @name = name
+        @column = options.column or @name
         @options = options
     pluginOption: (name, defaultVal) ->
         if name of @model.__bookshelf_schema_options
@@ -35,6 +36,7 @@ class Field
             @_appendValidations(cls)
         @_appendFormatter()
         @_appendParser()
+        @_appendAlias()
 
     validations: ->
         result = if @options.validations
@@ -47,12 +49,12 @@ class Field
     modelValidations: ->
 
     createGetter: ->
-        name = @name
-        -> @get name
+        column = @column
+        -> @get column
 
     createSetter: ->
-        name = @name
-        (value) -> @set name, value
+        column = @column
+        (value) -> @set column, value
 
     acceptsRule: (validations, names, rule) ->
         names = [names] unless names instanceof Array
@@ -75,12 +77,12 @@ class Field
 
         validations = @validations()
         if validations and validations.length > 0
-            if @name of meta.validations
-                unless meta.validations[@name] instanceof Array
-                    meta.validations[@name] = [meta.validations[@name]]
+            if @column of meta.validations
+                unless meta.validations[@column] instanceof Array
+                    meta.validations[@column] = [meta.validations[@column]]
             else
-                meta.validations[@name] = []
-            meta.validations[@name].push.apply meta.validations[@name], validations
+                meta.validations[@column] = []
+            meta.validations[@column].push.apply meta.validations[@column], validations
 
         modelValidations = @modelValidations()
         if modelValidations and modelValidations.length > 0
@@ -122,6 +124,11 @@ class Field
     _appendParser: ->
         if typeof @parse is 'function'
             @model.__bookshelf_schema.parsers.push @parse.bind(this)
+
+    _appendAlias: ->
+        if @column isnt @name
+            @model.__bookshelf_schema.aliases ?= {}
+            @model.__bookshelf_schema.aliases[@name] = @column
 
 class StringField extends Field
     constructor: (name, options) ->
@@ -207,16 +214,16 @@ class EncryptedStringField extends Field
         instance.on 'saving', @_onSaving
 
     parse: (attrs, options) ->
-        return attrs unless attrs[@name]?
-        attrs[@name] = new EncryptedString(attrs[@name], null, @options)
+        return attrs unless attrs[@column]?
+        attrs[@column] = new EncryptedString(attrs[@column], null, @options)
         attrs
 
     format: (attrs, options) ->
-        me = attrs[@name]
+        me = attrs[@column]
         return attrs unless me?
         unless me instanceof EncryptedString and me.encrypted
             throw new Error("Field @name should be encryted first")
-        attrs[@name] = me.encrypted
+        attrs[@column] = me.encrypted
         attrs
 
     _validateMinLenghth: (value, minLength) ->
@@ -230,11 +237,11 @@ class EncryptedStringField extends Field
         value.length <= maxLength
 
     _onSaving: (instance, attrs, options) =>
-        me = attrs[@name] or instance.attributes[@name]
+        me = attrs[@column] or instance.attributes[@column]
         return unless me?
         return if me instanceof EncryptedString and not me.plain
         if me not instanceof EncryptedString
-            me = attrs[@name] = instance.attributes[@name] = new EncryptedString null, me, @options
+            me = attrs[@column] = instance.attributes[@column] = new EncryptedString null, me, @options
         me.encrypt()
 
 class NumberField extends Field
@@ -263,7 +270,7 @@ class IntField extends NumberField
         result
 
     parse: (attrs) ->
-        attrs[@name] = parseInt attrs[@name] if attrs[@name]?
+        attrs[@column] = parseInt attrs[@column] if attrs[@column]?
 
 class FloatField extends NumberField
     constructor: (name, options) ->
@@ -276,7 +283,7 @@ class FloatField extends NumberField
         result
 
     parse: (attrs) ->
-        attrs[@name] = parseFloat attrs[@name] if attrs[@name]?
+        attrs[@column] = parseFloat attrs[@column] if attrs[@column]?
 
 class BooleanField extends Field
     constructor: (name, options) ->
@@ -284,10 +291,10 @@ class BooleanField extends Field
         super name, options
 
     parse: (attrs) ->
-        attrs[@name] = !!attrs[@name] if @name of attrs
+        attrs[@column] = !!attrs[@column] if @column of attrs
 
     format: (attrs) ->
-        attrs[@name] = !!attrs[@name] if @name of attrs
+        attrs[@column] = !!attrs[@column] if @column of attrs
 
 class DateTimeField extends Field
     constructor: (name, options) ->
@@ -300,10 +307,10 @@ class DateTimeField extends Field
         result
 
     parse: (attrs) ->
-        attrs[@name] = new Date(attrs[@name]) if attrs[@name]?
+        attrs[@column] = new Date(attrs[@column]) if attrs[@column]?
 
     format: (attrs) ->
-        attrs[@name] = new Date(attrs[@name]) if attrs[@name]? and attrs[@name] not instanceof Date
+        attrs[@column] = new Date(attrs[@column]) if attrs[@column]? and attrs[@column] not instanceof Date
 
     _validateDatetime: (value) ->
         return true if value instanceof Date
@@ -316,14 +323,14 @@ class DateField extends DateTimeField
         super name, options
 
     parse: (attrs) ->
-        if attrs[@name]?
-            d = new Date(attrs[@name])
-            attrs[@name] = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+        if attrs[@column]?
+            d = new Date(attrs[@column])
+            attrs[@column] = new Date(d.getFullYear(), d.getMonth(), d.getDate())
 
     format: (attrs) ->
-        if attrs[@name]?
-            d = unless attrs[@name] instanceof Date then new Date(attrs[@name]) else attrs[@name]
-            attrs[@name] = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+        if attrs[@column]?
+            d = unless attrs[@column] instanceof Date then new Date(attrs[@column]) else attrs[@column]
+            attrs[@column] = new Date(d.getFullYear(), d.getMonth(), d.getDate())
 
 class JSONField extends Field
     constructor: (name, options) ->
@@ -336,12 +343,12 @@ class JSONField extends Field
         result
 
     format: (attrs) ->
-        return unless attrs[@name] and typeof attrs[@name] is 'object'
-        attrs[@name] = JSON.stringify attrs[@name]
+        return unless attrs[@column] and typeof attrs[@column] is 'object'
+        attrs[@column] = JSON.stringify attrs[@column]
 
     parse: (attrs) ->
-        return unless attrs[@name] and typeof attrs[@name] is 'string'
-        attrs[@name] = JSON.parse attrs[@name]
+        return unless attrs[@column] and typeof attrs[@column] is 'string'
+        attrs[@column] = JSON.parse attrs[@column]
 
     _validateJSON: (value) ->
         return true if typeof value is 'object'

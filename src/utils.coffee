@@ -22,6 +22,7 @@ utils =
             result[f] = obj[f]
         result
     clone: (obj, options = {}) ->
+        return obj unless obj?
         res = {}
         if options.only
             for k in options.only
@@ -34,6 +35,11 @@ utils =
             for k in options.except
                 delete res[k]
 
+        res
+    invert: (obj) ->
+        res = {}
+        for k, v of obj
+            res[v] = k
         res
     upperFirst: (str) -> str[0].toUpperCase() + str[1..]
     lowerFirst: (str) -> str[0].toLowerCase() + str[1..]
