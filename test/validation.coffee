@@ -63,6 +63,39 @@ describe "Validation", ->
         yield user.save(null, validation: false)
         f.should.not.have.been.called()
 
+    it "when patching should accept validation to passed attributes only", co ->
+        f = spy -> true
+        g = spy -> false
+        class User extends db.Model
+            tableName: 'users'
+            @schema [
+                StringField 'username', validations: [ f ]
+                StringField 'email', validations: [ g ]
+            ]
+
+        user = yield User.forge(username: 'alice').save(null, validation: false)
+        user.email = 'foobar'
+
+        try
+            yield user.save({username: 'annie'}, {patch: true})
+        catch
+            # pass
+
+        f.should.have.been.called()
+        g.should.not.have.been.called()
+
+        f.reset()
+        g.reset()
+
+        try
+            yield user.save({username: 'annie'}, {patch: false})
+        catch
+            # pass
+
+        f.should.have.been.called()
+        g.should.have.been.called()
+
+
     it 'accepts custom validation rules like Checkit do', co ->
         class User extends db.Model
             tableName: 'users'

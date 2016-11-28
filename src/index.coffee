@@ -147,7 +147,12 @@ plugin = (options = {}) -> (db) ->
             if not @constructor.__bookshelf_schema_options.validation \
             or options.validation is false
                 return utils.Fulfilled()
-            json = @toJSON(validating: true)
+
+            json = if options.patch
+                attrs
+            else
+                @toJSON(validating: true)
+
             validations = @constructor.__bookshelf_schema?.validations or []
             modelValidations = @constructor.__bookshelf_schema?.modelValidations
             options = @_checkitOptions.call(this)
