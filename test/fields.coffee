@@ -255,7 +255,8 @@ describe "Fields", ->
 
         it 'validates aliased fields', co ->
             User = define [F.StringField 'login', column: 'username', min_length: 5, max_length: 10]
-            User.__bookshelf_schema.validations.username.should.deep.equal ['minLength:5', 'maxLength:10']
+            User.__bookshelf_schema.validations.should.have.property 'login'
+            User.__bookshelf_schema.validations.login.should.deep.equal ['minLength:5', 'maxLength:10']
             yield [
                 new User(login: 'foo').validate().should.be.rejected
                 new User(login: 'Some nickname that is longer then 10 characters').validate().should.be.rejected
@@ -292,5 +293,5 @@ describe "Fields", ->
 
             alice = yield User.forge(login: 'alice').save()
 
-            alice.toJSON().should.have.property('login')
+            alice.toJSON().should.have.property 'login'
             alice.toJSON().login.should.equal 'alice'

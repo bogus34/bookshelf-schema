@@ -96,8 +96,9 @@ plugin = (options = {}) -> (db) ->
             @constructor.__schema ?= []
             return super unless attributes
 
-            if @constructor.__bookshelf_schema?.aliases
-                attributes = applyAliases @constructor.__bookshelf_schema.aliases, attributes
+            aliases = @_aliases()
+            if aliases
+                attributes = applyAliases aliases, attributes
 
             super attributes, options
 
@@ -134,10 +135,10 @@ plugin = (options = {}) -> (db) ->
         toJSON: (options = {}) ->
             json = super
 
-            if not options.validating and
-            not options.use_columns and
-            @constructor.__bookshelf_schema.aliases
-                aliases = @constructor.__bookshelf_schema.aliases
+            use_columns = not options or options.virtuals == false or options.use_columns
+            aliases = @_aliases()
+
+            if not use_columns and aliases
                 json = applyAliases utils.invert(aliases), json
 
             json
@@ -156,7 +157,7 @@ plugin = (options = {}) -> (db) ->
             checkit
 
         save: (key, value, options) ->
-            return super unless @constructor.__bookshelf_schema?.aliases
+            return super unless @_aliases()
 
             if not key? or typeof key is 'object'
                 attrs = if key? then utils.clone(key) else {}
@@ -165,7 +166,7 @@ plugin = (options = {}) -> (db) ->
                 attrs = { "#{key}": value }
                 options = utils.clone(options) or {}
 
-            attrs = applyAliases @constructor.__bookshelf_schema.aliases, attrs
+            attrs = applyAliases @_aliases(), attrs
 
             super attrs, options
 
@@ -199,6 +200,8 @@ plugin = (options = {}) -> (db) ->
                 if @constructor.__bookshelf_schema_options[k]
                     memo[k] = @constructor.__bookshelf_schema_options[k]
             memo
+
+        _aliases: -> @constructor.__bookshelf_schema?.aliases
 
         _handleDestroy: (model, options = {}) ->
             # somehow query passed with options will break some of subsequent queries

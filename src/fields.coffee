@@ -78,11 +78,11 @@ class Field
         validations = @validations()
         if validations and validations.length > 0
             if @column of meta.validations
-                unless meta.validations[@column] instanceof Array
-                    meta.validations[@column] = [meta.validations[@column]]
+                unless meta.validations[@name] instanceof Array
+                    meta.validations[@name] = [meta.validations[@name]]
             else
-                meta.validations[@column] = []
-            meta.validations[@column].push.apply meta.validations[@column], validations
+                meta.validations[@name] = []
+            meta.validations[@name].push.apply meta.validations[@name], validations
 
         modelValidations = @modelValidations()
         if modelValidations and modelValidations.length > 0
