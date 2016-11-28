@@ -1,3 +1,14 @@
+0.3.0
+=====
+
+* Add "column" option for fields
+* Fix validation on saving with "patch" option
+
+0.2.5
+=====
+
+* Fix HasMany.attach
+
 0.2.4
 =====
 

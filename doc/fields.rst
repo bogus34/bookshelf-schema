@@ -90,6 +90,9 @@ All fields are a subclass of Field class.
 
 Options:
 
+**column**: String
+    use passed string as a database column name instead of field name
+
 **createProperty**: Boolean, default true
     create accessor for this field
 
