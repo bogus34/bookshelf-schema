@@ -279,6 +279,11 @@ describe "Fields", ->
 
             alice.login.should.equal 'alice'
 
+            yield alice.save('login', 'annie')
+            alice = yield User.forge(id: alice.id).fetch()
+
+            alice.login.should.equal 'annie'
+
         it 'saves model with aliased field using patch', co ->
             User = define [F.StringField 'login', column: 'username']
 
