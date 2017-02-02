@@ -33,7 +33,7 @@ User = db.Model.extend({ tableName: 'users'}, {
         EncryptedStringField('password'),
         BooleanField('active'),
         HasMany('Photo'),
-        Scope('isActive', function(){ return this.where({active: true}; }))
+        Scope('isActive', function(){ return this.where({active: true}); })
     ]
 });
 ```
