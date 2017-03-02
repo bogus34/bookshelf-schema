@@ -94,6 +94,22 @@ describe "Relations", ->
                 photo1 = yield Photo.forge(id: photo1.id).fetch()
                 expect(photo1.user_id).to.be.null
 
+            it 'can use custom foreign key and foreign key target', co ->
+                class OtherPhoto extends db.Model
+                    tableName: 'photos'
+                    @schema [
+                        StringField 'filename'
+                        StringField 'user_name'
+                        BelongsTo User, foreignKey: 'user_name', foreignKeyTarget: 'username'
+                    ]
+
+                [alice, [photo1, _]] = yield fixtures.alice()
+                photo2 = yield OtherPhoto.forge(id: photo1.id).fetch()
+                photo2.user_name = alice.username
+                yield photo2.save()
+                yield photo2.load('user')
+                photo2.$user.id.should.equal alice.id
+
         describe 'through', ->
             before -> init.inviters()
 

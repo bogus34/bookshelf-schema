@@ -63,6 +63,7 @@ photos = co ->
         table.increments('id').primary()
         table.string 'filename', 255
         table.integer 'user_id'
+        table.string 'user_name', 255
 
 profiles = co ->
     init() unless db

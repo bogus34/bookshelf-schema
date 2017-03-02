@@ -145,7 +145,9 @@ class Relation
         interim = @options.through
         throughForeignKey = @options.throughForeignKey
         otherKey = @options.otherKey
-        -> builder.call(this).through(interim, throughForeignKey, otherKey)
+        throughForeignKeyTarget = @options.throughForeignKeyTarget
+        otherKeyTarget = @options.otherKeyTarget
+        -> builder.call(this).through(interim, throughForeignKey, otherKey, throughForeignKeyTarget, otherKeyTarget)
 
     _applyQuery: (builder) ->
         return builder unless @options.query
@@ -208,7 +210,8 @@ class HasOne extends Relation
     _createRelation: ->
         related = @relatedModel
         foreignKey = @options.foreignKey
-        -> @hasOne related, foreignKey
+        foreignKeyTarget = @options.foreignKeyTarget
+        -> @hasOne related, foreignKey, foreignKeyTarget
 
 class BelongsTo extends Relation
     constructor: (model, options = {}) ->
@@ -227,7 +230,8 @@ class BelongsTo extends Relation
     _createRelation: ->
         related = @relatedModel
         foreignKey = @options.foreignKey
-        -> @belongsTo related, foreignKey
+        foreignKeyTarget = @options.foreignKeyTarget
+        -> @belongsTo related, foreignKey, foreignKeyTarget
 
     # Patch returned relations joinClauses and whereClauses
     # TODO: apply withPivot
@@ -273,7 +277,8 @@ class HasMany extends Relation
     _createRelation: ->
         related = @relatedModel
         foreignKey = @options.foreignKey
-        -> @hasMany related, foreignKey
+        foreignKeyTarget = @options.foreignKeyTarget
+        -> @hasMany related, foreignKey, foreignKeyTarget
 
 class BelongsToMany extends Relation
     @multiple: true
@@ -300,7 +305,9 @@ class BelongsToMany extends Relation
         table = @options.table
         foreignKey = @options.foreignKey
         otherKey = @options.otherKey
-        -> @belongsToMany related, table, foreignKey, otherKey
+        foreignKeyTarget = @options.foreignKeyTarget
+        otherKeyTarget = @options.otherKeyTarget
+        -> @belongsToMany related, table, foreignKey, otherKey, foreignKeyTarget, otherKeyTarget
 
 class MorphOne extends Relation
     constructor: (model, polymorphicName, options = {}) ->

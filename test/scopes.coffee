@@ -146,6 +146,8 @@ describe "Scopes", ->
                 db.knex('groups_users').insert(user_id: users[3].id, group_id: groups[1].id)
             ]
 
+        afterEach -> init.truncate 'groups', 'groups_users'
+
         describe 'BelongsToMany', ->
             beforeEach co ->
                 User.schema [
