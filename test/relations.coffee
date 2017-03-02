@@ -90,3 +90,51 @@ describe "Relations", ->
 
             alice.$photos.count().should.become 2
 
+    describe 'Configurable accessor prefix', ->
+        it 'can use different accessor prefix for relations', co ->
+            class Photo extends db.Model
+                tableName: 'photos'
+
+            class User extends db.Model
+                tableName: 'users'
+                @schema [
+                    StringField 'username'
+                    HasMany Photo, accessorPrefix: 'rel_'
+                ]
+
+            Photo.schema [
+                StringField 'filename'
+                BelongsTo User
+            ]
+
+            [alice, _] = yield fixtures.alice()
+            yield alice.load('photos')
+
+            photo = alice.rel_photos.at(0)
+
+            photo.should.be.an.instanceof Photo
+            expect(alice.$photos).not.to.be.defined
+
+            yield photo.load('user')
+            photo.$user.should.be.an.instanceof User
+
+        it 'allows pluginwide configure of relations accessor prefix', co ->
+            db2 = Bookshelf db.knex
+            db2.plugin 'registry'
+
+            db2.plugin Schema(relationsAccessorPrefix: 'rel_')
+
+            class Photo extends db.Model
+                tableName: 'photos'
+
+            class User extends db.Model
+                tableName: 'users'
+                @schema [
+                    StringField 'username'
+                    HasMany Photo, accessorPrefix: 'rel_'
+                ]
+
+            [alice, _] = yield fixtures.alice()
+            yield alice.load('photos')
+
+            alice.rel_photos.at(0).should.be.an.instanceof Photo

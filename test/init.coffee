@@ -31,10 +31,10 @@ initDb = ->
 
     db = Bookshelf knex
 
-init = ->
+init = (pluginOptions) ->
     return db if db?
     db = initDb()
-    db.plugin Schema()
+    db.plugin Schema(pluginOptions)
     db
 
 truncate = co (tables...) -> yield (db.knex(table).truncate() for table in tables)

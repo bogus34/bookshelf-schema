@@ -84,6 +84,9 @@ Options:
 **validation**: Boolean
   enable model validation
 
+**relationsAccessorPrefix**: String
+  prefix for relations accessors
+
 **language**, **labels**, **messages**
   are passed to Checkit_
 

@@ -196,7 +196,7 @@ class Relation
         else
             lowerFirst(@_relatedModelName())
 
-    _deduceAccessorName: -> "#{@pluginOption('accessorPrefix', '$')}#{@name}"
+    _deduceAccessorName: -> "#{@option('accessorPrefix', 'relationsAccessorPrefix', '$')}#{@name}"
 
 class HasOne extends Relation
     constructor: (model, options = {}) ->
