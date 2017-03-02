@@ -1,3 +1,9 @@
+0.3.1
+=====
+
+* Add foreignKeyTarget, otherKeyTarget and throughForeignkeyTarget options for relations
+* Fix relation option accessorPrefix and add plugin-wide relationsAccessorPrefix option
+
 0.3.0
 =====
 

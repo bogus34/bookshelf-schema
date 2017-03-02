@@ -161,6 +161,9 @@ Options:
 **through**: (Class|String)
     generate "through" relation
 
+**foreignKey**, **otherKey**, **foreignKeyTarget**, **otherKeyTarget**, **throughForeignKey**, **throughForeignKeyTarget**: String
+    has the same meaning as in appropriate Bookshelf relations
+
 Relation classes
 ----------------
 
@@ -175,6 +178,8 @@ BelongsTo
 .. class:: BelongsTo(model, options = {})
 
 Adds IntField <name>_id to model schema
+
+.. note:: if custom **foreignKey** used it may be necessary to explicitly add corresponding field to avoid validation errors
 
 HasMany
 ^^^^^^^
