@@ -74,6 +74,6 @@ debounce = (interval, fn) ->
         timeout = setTimeout fn, interval
 
 task "watch-doc", "watch and rebuild documentation", ->
+    build = debounce 1000, -> invoke('build-doc')
     fs.watch './doc', (event, filename) ->
-        unless filename[0] in ['.', '#']
-            debounce(200, ( -> invoke('build-doc') ))()
+        build() unless filename[0] in ['.', '#']
