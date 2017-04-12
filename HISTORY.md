@@ -1,3 +1,8 @@
+0.3.2
+=====
+
+* Actually fix validation on saving with "patch" option, thanks to @roackb2
+
 0.3.1
 =====
 
