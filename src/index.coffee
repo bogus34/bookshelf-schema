@@ -153,10 +153,17 @@ plugin = (options = {}) -> (db) ->
             else
                 @toJSON(validating: true)
 
-            validations = @constructor.__bookshelf_schema?.validations or []
-            modelValidations = @constructor.__bookshelf_schema?.modelValidations
+            validations = if not @constructor.__bookshelf_schema?.validations
+                []
+            else if options.patch
+                utils.pluck @constructor.__bookshelf_schema.validations, Object.keys(json)
+            else
+                @constructor.__bookshelf_schema.validations
+
+            modelValidations = not options.patch and @constructor.__bookshelf_schema?.modelValidations
             options = @_checkitOptions.call(this)
             checkit = CheckIt(validations, options).run(json)
+
             if @modelValidations and @modelValidations.length > 0
                 checkit = checkit.then -> CheckIt(all: model_validations, options).run(all: json)
             checkit

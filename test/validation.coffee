@@ -70,16 +70,13 @@ describe "Validation", ->
             tableName: 'users'
             @schema [
                 StringField 'username', validations: [ f ]
-                StringField 'email', validations: [ g ]
+                StringField 'email', validations: [ g ], required: true
             ]
 
         user = yield User.forge(username: 'alice').save(null, validation: false)
         user.email = 'foobar'
 
-        try
-            yield user.save({username: 'annie'}, {patch: true})
-        catch
-            # pass
+        yield user.save({username: 'annie'}, {patch: true})
 
         f.should.have.been.called()
         g.should.not.have.been.called()
