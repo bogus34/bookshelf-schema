@@ -25,6 +25,7 @@
 ###
 
 CheckIt = require 'checkit'
+_ = require 'lodash'
 utils = require './utils'
 
 plugin = (options = {}) -> (db) ->
@@ -71,26 +72,33 @@ plugin = (options = {}) -> (db) ->
             contributeToModel this, @__schema
 
         @extend: (props, statics) ->
+            Parent = this
             if statics?.schema
                 schema = statics.schema
                 delete statics.schema
 
-            #
-            # As with fixInheritance but for the case when someone extends Model after Schema
-            # We copy static properties over to fix CoffeeScript class inheritance after it.
-            #
-            ctor = if props.hasOwnProperty 'constructor'
+            Child = if props.hasOwnProperty 'constructor'
                 props.constructor
             else
-                -> Model.apply(this, arguments)
-            ctor[k] = v for own k, v of Model
-            props.constructor = ctor
+                -> Parent.apply(this, arguments)
 
-            cls = super props, statics
+            _.assign Child, statics
 
-            return cls unless schema
-            cls.schema schema
-            cls
+            # properly set prototype chain with JavaScript - not sure how to do this in
+            # Coffeescript without `class Child extends Parent`, which breaks the props.constructor thing
+            `Child.prototype = Object.create(Parent.prototype, { constructor: { value: Child }});`
+
+            if props
+                _.assign(Child.prototype, props)
+
+            Child[k] = v for own k, v of Model
+
+            if _.isFunction Parent.extended
+                Parent.extended Child
+
+            return Child unless schema
+            Child.schema schema
+            Child
 
         constructor: (attributes, options) ->
             @constructor.__schema ?= []
