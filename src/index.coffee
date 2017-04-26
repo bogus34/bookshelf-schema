@@ -72,33 +72,24 @@ plugin = (options = {}) -> (db) ->
             contributeToModel this, @__schema
 
         @extend: (props, statics) ->
-            Parent = this
             if statics?.schema
                 schema = statics.schema
                 delete statics.schema
 
-            Child = if props.hasOwnProperty 'constructor'
+            self = this
+            child = if props.hasOwnProperty 'constructor'
                 props.constructor
             else
-                -> Parent.apply(this, arguments)
+                -> self.apply(this, arguments)
 
-            _.assign Child, statics
+            extend child, self
+            _.assign child, statics
+            _.assign child.prototype, props
+            self.extended? child
 
-            # properly set prototype chain with JavaScript - not sure how to do this in
-            # Coffeescript without `class Child extends Parent`, which breaks the props.constructor thing
-            `Child.prototype = Object.create(Parent.prototype, { constructor: { value: Child }});`
-
-            if props
-                _.assign(Child.prototype, props)
-
-            Child[k] = v for own k, v of Model
-
-            if _.isFunction Parent.extended
-                Parent.extended Child
-
-            return Child unless schema
-            Child.schema schema
-            Child
+            return child unless schema
+            child.schema schema
+            child
 
         constructor: (attributes, options) ->
             @constructor.__schema ?= []
