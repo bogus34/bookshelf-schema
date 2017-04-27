@@ -82,7 +82,7 @@ plugin = (options = {}) -> (db) ->
             else
                 -> self.apply(this, arguments)
 
-            extend child, self
+            `extend(child, self)`
             _.assign child, statics
             _.assign child.prototype, props
             self.extended? child
