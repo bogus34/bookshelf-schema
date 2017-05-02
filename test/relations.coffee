@@ -1,10 +1,12 @@
+{result, merge} = require 'lodash'
 Bookshelf = require 'bookshelf'
+Uuid = require 'node-uuid'
 Schema = require '../src/'
 init = require './init'
 Fields = require '../src/fields'
 Relations = require '../src/relations'
 
-{StringField, IntField, EmailField} = Fields
+{StringField, IntField, EmailField, DateTimeField} = Fields
 {HasMany, BelongsTo} = Relations
 
 describe "Relations", ->
@@ -12,6 +14,8 @@ describe "Relations", ->
     db = null
     User = null
     Photo = null
+    Post = null
+    Link = null
 
     fixtures =
         alice: co ->
@@ -20,11 +24,18 @@ describe "Relations", ->
                 new Photo(filename: 'photo1.jpg', user_id: alice.id).save()
                 new Photo(filename: 'photo2.jpg', user_id: alice.id).save()
             ]
-            [alice, photos]
+            # [alice, photos]
+            pid1 = Uuid.v4()
+            post1 = yield new Post(posted_at: new Date, edited_at: new Date, body: "Frist Post", user_id: alice.id).save()
+            [alice, photos, post1]
+            pid2 = Uuid.v4()
+            post2 = yield new Post(posted_at: new Date, edited_at: new Date, body: "2nd psot", user_id: alice.id).save()
+            link = yield new Link(url: 'http://localhost', post_id: post1.id).save()
+            [alice, photos, post1, post2, link]
 
     before co ->
         db = init.init()
-        yield [ init.users(), init.photos() ]
+        yield [ init.users(), init.photos(), init.posts(), init.links() ]
 
     describe 'Common', ->
         beforeEach ->
@@ -33,20 +44,49 @@ describe "Relations", ->
 
             class User extends db.Model
                 tableName: 'users'
-                @schema [
-                    StringField 'username'
-                    HasMany Photo
-                ]
 
             Photo.schema [
                 StringField 'filename'
                 BelongsTo User
             ]
 
-        afterEach -> init.truncate 'users', 'photos'
+            class Link extends db.Model
+                tableName: 'links'
+                initialize: co ->
+                    db.Model.initialize?.call this
+                    def = result this, 'defaults'
+                    this.defaults = merge { 'id': Uuid.v4() }, def
+
+            class Post extends db.Model
+                tableName: 'posts'
+                initialize: (attributes, options) ->
+                    db.Model.initialize?.call this
+                    def = result this, 'defaults'
+                    this.defaults = merge { 'id': Uuid.v4() }, def
+                @schema [
+                    DateTimeField 'posted_at'
+                    DateTimeField 'edited_at'
+                    StringField 'body'
+                    BelongsTo User
+                    HasMany Link
+                ]
+
+            User.schema [
+                StringField 'username'
+                HasMany Photo
+                HasMany Post
+            ]
+
+            Link.schema [
+                StringField 'url'
+                BelongsTo Post
+            ]
+
+        # afterEach -> init.truncate 'users', 'photos'
+        afterEach -> init.truncate 'users', 'photos', 'posts', 'links'
 
         it 'does something relevant', co ->
-            [alice, _] = yield fixtures.alice()
+            [alice, photos, post1, post2, link] = yield fixtures.alice()
             yield alice.load('photos')
 
             alice.$photos.at(0).should.be.an.instanceof Photo
@@ -58,13 +98,22 @@ describe "Relations", ->
                     HasMany Photo, query: -> @query('where', 'filename', '=', 'photo1.jpg')
                 ]
 
-            [alice, _] = yield fixtures.alice()
+            [alice, photos, post1, post2, link] = yield fixtures.alice()
 
             yield alice.$photos.count().should.become 1
             photos = yield alice.$photos.fetch()
             photos.length.should.be.equal 1
             photos.first().should.be.an.instanceof Photo
             photos.first().filename.should.be.equal 'photo1.jpg'
+
+        it 'can relate models by uuid', co ->
+            [alice, _] = yield fixtures.alice()
+            yield alice.load('posts')
+            post = alice.$posts.first()
+            post.should.be.an.instanceof Post
+            yield post.load('links')
+            link = post.$links.first()
+            link.post_id.should.equal(post.id)
 
         it 'works with plugin registry', co ->
             db2 = Bookshelf db.knex
@@ -86,7 +135,7 @@ describe "Relations", ->
                 ]
             db2.model 'Photo', Photo
 
-            [alice, _] = yield fixtures.alice()
+            [alice, photos, post1, post2, link] = yield fixtures.alice()
 
             alice.$photos.count().should.become 2
 
@@ -107,7 +156,7 @@ describe "Relations", ->
                 BelongsTo User
             ]
 
-            [alice, _] = yield fixtures.alice()
+            [alice, photos, post1, post2, link] = yield fixtures.alice()
             yield alice.load('photos')
 
             photo = alice.rel_photos.at(0)
@@ -134,7 +183,7 @@ describe "Relations", ->
                     HasMany Photo, accessorPrefix: 'rel_'
                 ]
 
-            [alice, _] = yield fixtures.alice()
+            [alice, photos, post1, post2, link] = yield fixtures.alice()
             yield alice.load('photos')
 
             alice.rel_photos.at(0).should.be.an.instanceof Photo

@@ -151,6 +151,16 @@ class EmailField extends StringField
         result.push @_withMessage 'email'
         result
 
+class UUIDField extends StringField
+    constructor: (name, options) ->
+        return new UUIDField(name, options) unless this instanceof UUIDField
+        super name, options
+
+    validations: ->
+        result = super
+        result.push @_withMessage 'uuid'
+        result
+
 class EncryptedString
     constructor: (@encrypted, @plain, @options = {}) ->
         @options.saltLength ?= 16

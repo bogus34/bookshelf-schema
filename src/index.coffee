@@ -25,6 +25,7 @@
 ###
 
 CheckIt = require 'checkit'
+_ = require 'lodash'
 utils = require './utils'
 
 plugin = (options = {}) -> (db) ->
@@ -75,22 +76,20 @@ plugin = (options = {}) -> (db) ->
                 schema = statics.schema
                 delete statics.schema
 
-            #
-            # As with fixInheritance but for the case when someone extends Model after Schema
-            # We copy static properties over to fix CoffeeScript class inheritance after it.
-            #
-            ctor = if props.hasOwnProperty 'constructor'
+            self = this
+            child = if props.hasOwnProperty 'constructor'
                 props.constructor
             else
-                -> Model.apply(this, arguments)
-            ctor[k] = v for own k, v of Model
-            props.constructor = ctor
+                -> self.apply(this, arguments)
 
-            cls = super props, statics
+            `extend(child, self)`
+            _.assign child, statics
+            _.assign child.prototype, props
+            self.extended? child
 
-            return cls unless schema
-            cls.schema schema
-            cls
+            return child unless schema
+            child.schema schema
+            child
 
         constructor: (attributes, options) ->
             @constructor.__schema ?= []
