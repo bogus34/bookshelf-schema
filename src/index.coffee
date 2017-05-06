@@ -82,8 +82,11 @@ plugin = (options = {}) -> (db) ->
             ctor = if props.hasOwnProperty 'constructor'
                 props.constructor
             else
-                -> Model.apply(this, arguments)
-            ctor[k] = v for own k, v of Model
+                ActualModel = this
+                -> ActualModel.apply(this, arguments)
+
+            ctor[k] = v for own k, v of this
+
             props.constructor = ctor
 
             cls = super props, statics

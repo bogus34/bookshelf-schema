@@ -31,6 +31,32 @@ describe "Bookshelf schema", ->
         User.prototype.hasOwnProperty('age').should.be.true
         User.prototype.hasOwnProperty('email').should.be.true
 
+    it 'can extend from an extended model', ->
+        BaseModel = db.Model.extend {
+            constructor: ->
+                db.Model.apply this, arguments
+                this.base_property = true
+        }, {
+            schema: [
+                StringField 'commonid'
+            ]
+        }
+
+        User = BaseModel.extend {
+            tableName: 'users'
+        }, {
+            schema: [
+                StringField 'username'
+                IntField 'age'
+                EmailField 'email'
+            ]
+        }
+
+        User.__bookshelf_schema.should.be.defined
+        User.prototype.hasOwnProperty('username').should.be.true
+        user = new User
+        user.base_property.should.be.true
+
     it 'can apply schema with coffeescript @schema static method', ->
         class User extends db.Model
             tableName: 'users'
@@ -95,4 +121,3 @@ describe "Bookshelf schema", ->
 
         User.prototype.hasOwnProperty('$photos').should.be.true
         User.prototype.photos.should.be.a.function
-
