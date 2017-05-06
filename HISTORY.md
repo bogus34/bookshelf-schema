@@ -1,3 +1,11 @@
+0.3.3
+=====
+
+* Fix extending already extended model
+* Add UUIDField
+
+Thanks to Adam Cofer @acofer
+
 0.3.2
 =====
 
