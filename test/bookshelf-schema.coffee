@@ -4,16 +4,28 @@ init = require './init'
 Fields = require '../src/fields'
 Relations = require '../src/relations'
 
-{StringField, IntField, EmailField} = Fields
+{StringField, IntField, EmailField, DateField} = Fields
 {HasMany, BelongsTo} = Relations
 
 
 describe "Bookshelf schema", ->
     this.timeout 3000
     db = null
+    User = null
+    Photo = null
+    example_email = 'foo@bar.com'
 
-    before ->
+    fixtures =
+        alice: co ->
+            alice = yield new User(username: 'alice', birth_date: new Date, email: example_email).save()
+            photos = yield [
+                new Photo(filename: 'photo1.jpg', user_id: alice.id).save()
+                new Photo(filename: 'photo2.jpg', user_id: alice.id).save()
+            ]
+
+    before co ->
         db = init.init()
+        yield [ init.users(), init.photos() ]
 
     it 'can apply schema with Model.extend', ->
         User = db.Model.extend {
@@ -31,7 +43,7 @@ describe "Bookshelf schema", ->
         User.prototype.hasOwnProperty('age').should.be.true
         User.prototype.hasOwnProperty('email').should.be.true
 
-    it 'can extend from an extended model', ->
+    it 'can extend from an extended model', co ->
         BaseModel = db.Model.extend {
             constructor: ->
                 db.Model.apply this, arguments
@@ -42,20 +54,54 @@ describe "Bookshelf schema", ->
             ]
         }
 
-        User = BaseModel.extend {
-            tableName: 'users'
-        }, {
-            schema: [
-                StringField 'username'
-                IntField 'age'
-                EmailField 'email'
-            ]
+        Serializer = {
+            serialize: ->
+                serialized = db.Model.prototype.serialize.apply this, arguments
+                if 'password' of serialized
+                    delete serialized['password']
+                serialized
         }
 
+        User = BaseModel.extend
+            tableName: 'users'
+
+        Photo = BaseModel.extend
+            tableName: 'photos'
+
+        User.schema [
+            StringField 'username'
+            StringField 'password'
+            DateField 'birth_date'
+            EmailField 'email'
+            HasMany Photo
+        ]
+
+        Photo.schema [
+            StringField 'filename'
+            StringField 'user_name'
+            BelongsTo User
+        ]
+
+        User = User.extend Serializer
+        Photo = Photo.extend Serializer
+
+        [alice, photos] = yield fixtures.alice()
+
         User.__bookshelf_schema.should.be.defined
-        User.prototype.hasOwnProperty('username').should.be.true
-        user = new User
-        user.base_property.should.be.true
+        User.__schema.should.be.defined
+
+        alice = yield User.forge(id: alice.id).fetch(withRelated: 'photos')
+        alice.username.should.equal 'alice'
+        alice.email.should.equal example_email
+        photo0 = alice.$photos.at(0)
+        photo0.filename.should.equal 'photo1.jpg'
+
+        bob = yield new User(username: 'bob', password: 's3kr37', birth_date: new Date, email: example_email).save()
+        bob = yield User.forge(id: bob.id).fetch()
+        bob.username.should.equal 'bob'
+        bob.email.should.equal example_email
+        pickledbob = bob.serialize()
+        pickledbob.should.not.have.key 'password'
 
     it 'can apply schema with coffeescript @schema static method', ->
         class User extends db.Model

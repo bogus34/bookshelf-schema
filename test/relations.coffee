@@ -23,11 +23,8 @@ describe "Relations", ->
                 new Photo(filename: 'photo1.jpg', user_id: alice.id).save()
                 new Photo(filename: 'photo2.jpg', user_id: alice.id).save()
             ]
-            # [alice, photos]
-            pid1 = Uuid.v4()
             post1 = yield new Post(posted_at: new Date, edited_at: new Date, body: "Frist Post", user_id: alice.id).save()
             [alice, photos, post1]
-            pid2 = Uuid.v4()
             post2 = yield new Post(posted_at: new Date, edited_at: new Date, body: "2nd psot", user_id: alice.id).save()
             link = yield new Link(url: 'http://localhost', post_id: post1.id).save()
             [alice, photos, post1, post2, link]
@@ -84,7 +81,6 @@ describe "Relations", ->
                 BelongsTo Post
             ]
 
-        # afterEach -> init.truncate 'users', 'photos'
         afterEach -> init.truncate 'users', 'photos', 'posts', 'links'
 
         it 'does something relevant', co ->
