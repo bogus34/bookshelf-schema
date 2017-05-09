@@ -88,9 +88,9 @@ plugin = (options = {}) -> (db) ->
 
             ctor[k] = v for own k, v of this
 
-            props.constructor = ctor
-
             cls = super props, statics
+            cls.constructor = ctor
+            this.extended? cls
 
             return cls unless schema
             cls.schema schema
