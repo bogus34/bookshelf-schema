@@ -76,20 +76,25 @@ plugin = (options = {}) -> (db) ->
                 schema = statics.schema
                 delete statics.schema
 
-            self = this
-            child = if props.hasOwnProperty 'constructor'
+            #
+            # As with fixInheritance but for the case when someone extends Model after Schema
+            # We copy static properties over to fix CoffeeScript class inheritance after it.
+            #
+            ctor = if props.hasOwnProperty 'constructor'
                 props.constructor
             else
-                -> self.apply(this, arguments)
+                ActualModel = this
+                -> ActualModel.apply(this, arguments)
 
-            `extend(child, self)`
-            _.assign child, statics
-            _.assign child.prototype, props
-            self.extended? child
+            ctor[k] = v for own k, v of this
 
-            return child unless schema
-            child.schema schema
-            child
+            props.constructor = ctor
+
+            cls = super props, statics
+
+            return cls unless schema
+            cls.schema schema
+            cls
 
         constructor: (attributes, options) ->
             @constructor.__schema ?= []

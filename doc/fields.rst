@@ -132,6 +132,13 @@ EmailField
 
 Like a StringField with simple check that value looks like a email address.
 
+UUIDField
+^^^^^^^^^
+
+.. class:: UUIDField(name, options = {})
+
+Like as StringField that should be formatted as a UUID.
+
 EncryptedStringField
 ^^^^^^^^^^^^^^^^^^^^
 

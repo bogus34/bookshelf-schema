@@ -370,6 +370,7 @@ module.exports = {
     Field
     StringField
     EmailField
+    UUIDField
     EncryptedStringField
     NumberField
     IntField

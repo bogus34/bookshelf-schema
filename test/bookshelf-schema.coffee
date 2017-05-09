@@ -121,4 +121,3 @@ describe "Bookshelf schema", ->
 
         User.prototype.hasOwnProperty('$photos').should.be.true
         User.prototype.photos.should.be.a.function
-
