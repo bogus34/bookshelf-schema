@@ -25,7 +25,6 @@
 ###
 
 CheckIt = require 'checkit'
-_ = require 'lodash'
 utils = require './utils'
 
 plugin = (options = {}) -> (db) ->

@@ -221,8 +221,7 @@ class BelongsTo extends Relation
     contributeToSchema: (schema) ->
         super
         foreignKey = @options.foreignKey or "#{@_relatedModelName().toLowerCase()}_id"
-        # foreign key may be integer or UUID
-        pushField schema, foreignKey, Field(foreignKey)
+        pushField schema, foreignKey, IntField(foreignKey)
 
     @injectedMethods: require './relations/belongs_to'
 
