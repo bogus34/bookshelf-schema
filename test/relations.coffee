@@ -1,4 +1,3 @@
-{result, merge} = require 'lodash'
 Bookshelf = require 'bookshelf'
 Uuid = require 'node-uuid'
 Schema = require '../src/'
@@ -6,7 +5,7 @@ init = require './init'
 Fields = require '../src/fields'
 Relations = require '../src/relations'
 
-{StringField, IntField, EmailField, DateTimeField} = Fields
+{StringField, IntField, EmailField, DateTimeField, UUIDField} = Fields
 {HasMany, BelongsTo} = Relations
 
 describe "Relations", ->
@@ -54,15 +53,17 @@ describe "Relations", ->
                 tableName: 'links'
                 initialize: co ->
                     db.Model.initialize?.call this
-                    def = result this, 'defaults'
-                    this.defaults = merge { 'id': Uuid.v4() }, def
+                    def = this.defaults? || {}
+                    def.id = Uuid.v4()
+                    this.defaults = def
 
             class Post extends db.Model
                 tableName: 'posts'
                 initialize: (attributes, options) ->
                     db.Model.initialize?.call this
-                    def = result this, 'defaults'
-                    this.defaults = merge { 'id': Uuid.v4() }, def
+                    def = this.defaults? || {}
+                    def.id = Uuid.v4()
+                    this.defaults = def
                 @schema [
                     DateTimeField 'posted_at'
                     DateTimeField 'edited_at'
@@ -79,6 +80,7 @@ describe "Relations", ->
 
             Link.schema [
                 StringField 'url'
+                UUIDField 'post_id'
                 BelongsTo Post
             ]
 
