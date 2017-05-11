@@ -1,3 +1,8 @@
+0.3.4
+=====
+
+* no need to work around Bookshelf inheritance mechanism since v0.10
+
 0.3.3
 =====
 
