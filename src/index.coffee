@@ -25,24 +25,30 @@
 ###
 
 CheckIt = require 'checkit'
+semverCmp = require 'semver-compare'
 utils = require './utils'
 
 plugin = (options = {}) -> (db) ->
     options.createProperties ?= true
     options.validation ?= true
 
-    #
-    # Bookshelf.Model.extend manipulates __proto__ instead of copying static
-    # methods to child class and it breaks normal CoffeeScript inheritance.
-    # So if any plugin added before Schema extends Model, we have a problem.
-    # This function is trying to fix it.
-    #
-    fixInheritance = (base, cls) ->
-        proto = base.__proto__
-        while typeof proto is 'function'
-            for own k, v of proto when not cls.hasOwnProperty(k)
-                cls[k] = v
-            proto = proto.__proto__
+    needFixInheritance = semverCmp(db.VERSION, '0.10') < 0
+
+    fixInheritance = if needFixInheritance
+        #
+        # Bookshelf.Model.extend manipulates __proto__ instead of copying static
+        # methods to child class and it breaks normal CoffeeScript inheritance.
+        # So if any plugin added before Schema extends Model, we have a problem.
+        # This function is trying to fix it.
+        #
+        (base, cls) ->
+            proto = base.__proto__
+            while typeof proto is 'function'
+                for own k, v of proto when not cls.hasOwnProperty(k)
+                    cls[k] = v
+                proto = proto.__proto__
+    else
+        ->
 
     buildSchema = (entities) ->
         schema = []
@@ -75,19 +81,20 @@ plugin = (options = {}) -> (db) ->
                 schema = statics.schema
                 delete statics.schema
 
-            #
-            # As with fixInheritance but for the case when someone extends Model after Schema
-            # We copy static properties over to fix CoffeeScript class inheritance after it.
-            #
-            ctor = if props.hasOwnProperty 'constructor'
-                props.constructor
-            else
-                ActualModel = this
-                -> ActualModel.apply(this, arguments)
+            if needFixInheritance
+                #
+                # As with fixInheritance but for the case when someone extends Model after Schema
+                # We copy static properties over to fix CoffeeScript class inheritance after it.
+                #
+                ctor = if props.hasOwnProperty 'constructor'
+                    props.constructor
+                else
+                    ActualModel = this
+                    -> ActualModel.apply(this, arguments)
 
-            ctor[k] = v for own k, v of this
+                ctor[k] = v for own k, v of this
 
-            props.constructor = ctor
+                props.constructor = ctor
 
             cls = super props, statics
 

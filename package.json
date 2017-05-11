@@ -33,7 +33,8 @@
   },
   "dependencies": {
     "checkit": "^0.7.0",
-    "inflection": "^1.8.0"
+    "inflection": "^1.8.0",
+    "semver-compare": "^1.0.0"
   },
   "peerDependencies": {
     "bookshelf": ">=0.8.2 <0.11"
