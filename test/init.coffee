@@ -55,6 +55,26 @@ users = co ->
         table.json 'additional_data'
         table.integer 'inviter_id'
 
+posts = co ->
+    init() unless db
+    knex = db.knex
+    yield knex.schema.dropTableIfExists 'posts'
+    yield knex.schema.createTable 'posts', (table) ->
+        table.uuid('id').primary()
+        table.dateTime 'posted_at'
+        table.dateTime 'edited_at'
+        table.string 'body', 1024
+        table.integer 'user_id'
+
+links = co ->
+    init() unless db
+    knex = db.knex
+    yield knex.schema.dropTableIfExists 'links'
+    yield knex.schema.createTable 'links', (table) ->
+        table.uuid('id').primary()
+        table.string 'url'
+        table.uuid 'post_id'
+
 photos = co ->
     init() unless db
     knex = db.knex
@@ -113,6 +133,8 @@ module.exports =
     truncate: truncate
     users: users
     photos: photos
+    posts: posts
+    links: links
     profiles: profiles
     groups: groups
     tags: tags
