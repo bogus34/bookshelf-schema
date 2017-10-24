@@ -48,7 +48,7 @@
 
 {pluralize, singularize, camelize} = require 'inflection'
 {Field, IntField, StringField} = require './fields'
-{Fulfilled, Rejected, promiseFinally, values, pluck, upperFirst, lowerFirst} = require './utils'
+{Fulfilled, Rejected, promiseFinally, values, upperFirst, lowerFirst} = require './utils'
 
 pushField = (schema, name, field) ->
     for f in schema when f instanceof Field

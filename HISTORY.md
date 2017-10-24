@@ -1,3 +1,8 @@
+0.3.5
+=====
+
+* fix validation with patch error, thanks to @cantado
+
 0.3.4
 =====
 

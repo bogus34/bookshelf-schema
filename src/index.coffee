@@ -166,7 +166,7 @@ plugin = (options = {}) -> (db) ->
             validations = if not @constructor.__bookshelf_schema?.validations
                 []
             else if options.patch
-                utils.pluck @constructor.__bookshelf_schema.validations, Object.keys(json)
+                utils.pluck @constructor.__bookshelf_schema.validations, Object.keys(json)...
             else
                 @constructor.__bookshelf_schema.validations
 
