@@ -139,6 +139,7 @@ class StringField extends Field
         result = super
         @acceptsRule result, ['minLength', 'min_length']
         @acceptsRule result, ['maxLength', 'max_length']
+        result.unshift @_withMessage 'string'
         result
 
 class EmailField extends StringField
