@@ -22,7 +22,7 @@ describe "Fields", ->
     describe 'Any field', ->
         it 'may be required', co ->
             User = define [F.StringField 'username', required: true]
-            User.__bookshelf_schema.validations.username.should.deep.equal ['required']
+            User.__bookshelf_schema.validations.username.should.deep.equal ['string', 'required']
 
             yield [
                 new User().validate().should.be.rejected
@@ -32,7 +32,7 @@ describe "Fields", ->
     describe 'StringField', ->
         it 'validates min_length and max_length', co ->
             User = define [F.StringField 'username', min_length: 5, max_length: 10]
-            User.__bookshelf_schema.validations.username.should.deep.equal ['minLength:5', 'maxLength:10']
+            User.__bookshelf_schema.validations.username.should.deep.equal ['string', 'minLength:5', 'maxLength:10']
 
             yield [
                 new User(username: 'foo').validate().should.be.rejected
@@ -42,12 +42,12 @@ describe "Fields", ->
 
         it 'uses additional names for length restrictions', ->
             User = define [F.StringField 'username', minLength: 5, maxLength: 10]
-            User.__bookshelf_schema.validations.username.should.deep.equal ['minLength:5', 'maxLength:10']
+            User.__bookshelf_schema.validations.username.should.deep.equal ['string', 'minLength:5', 'maxLength:10']
 
     describe 'EmailField', ->
         it 'validates email', co ->
             User = define [F.EmailField 'email']
-            User.__bookshelf_schema.validations.email.should.deep.equal ['email']
+            User.__bookshelf_schema.validations.email.should.deep.equal ['string', 'email']
 
             yield [
                 new User(email: 'foo').validate().should.be.rejected
@@ -256,7 +256,7 @@ describe "Fields", ->
         it 'validates aliased fields', co ->
             User = define [F.StringField 'login', column: 'username', min_length: 5, max_length: 10]
             User.__bookshelf_schema.validations.should.have.property 'login'
-            User.__bookshelf_schema.validations.login.should.deep.equal ['minLength:5', 'maxLength:10']
+            User.__bookshelf_schema.validations.login.should.deep.equal ['string', 'minLength:5', 'maxLength:10']
             yield [
                 new User(login: 'foo').validate().should.be.rejected
                 new User(login: 'Some nickname that is longer then 10 characters').validate().should.be.rejected

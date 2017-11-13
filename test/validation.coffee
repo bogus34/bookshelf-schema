@@ -24,8 +24,8 @@ describe "Validation", ->
 
     it 'should create array of validations', ->
         User.__bookshelf_schema.validations.should.deep.equal
-            username: ['minLength:3', 'maxLength:15']
-            email: ['email']
+            username: ['string', 'minLength:3', 'maxLength:15']
+            email: ['string', 'email']
 
     it 'should validate models', co ->
         yield [
