@@ -1,3 +1,8 @@
+0.3.6
+=====
+
+* add "string" validation to StringField, thanks to @djedi-knight
+
 0.3.5
 =====
 
