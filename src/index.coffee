@@ -161,7 +161,7 @@ plugin = (options = {}) -> (db) ->
             json = if options.patch
                 attrs
             else
-                @toJSON(validating: true)
+                @toJSON(validating: true, visibility: false)
 
             validations = if not @constructor.__bookshelf_schema?.validations
                 []
